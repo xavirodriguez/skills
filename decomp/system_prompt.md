@@ -59,3 +59,29 @@ The core loop is:
       -> full verification
 
 Never substitute "functionally equivalent" for "matching".
+
+
+## Autonomous experiment protocol
+
+Use the repository helpers as a controlled toolchain:
+
+    inspect -> scout -> analyze -> propose -> dry-run -> apply one change
+      -> build -> authoritative compare -> parse evidence -> ledger -> repeat
+
+The agent must not guess build commands. It must discover them from the target repository and pass them explicitly to the harness.
+
+The harness is intentionally not an autonomous source editor. It executes only explicit commands and records their output. Source editing remains an LLM responsibility so that every edit has a stated hypothesis and evidence.
+
+For every iteration:
+- preserve the raw analyzer JSON;
+- preserve build and compare logs;
+- identify the first mismatch;
+- record one hypothesis and one source change;
+- reject and remember failed hypotheses;
+- stop on exact match, concrete blocker, or user budget.
+
+Before a destructive or expensive run, use run_match.py --dry-run.
+
+## Project status versus match proof
+
+Directories such as asm/nonmatchings are useful project annotations, but they are not proof by themselves. The authoritative project comparison remains the only completion criterion.
