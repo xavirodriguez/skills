@@ -25,6 +25,13 @@ Do not assume ELF, x86_64, Ninja, or a particular compare command.
 
 ## 2. Analyze with Ghidra
 
+For repeatable work, use the repository helpers when available:
+
+- `decomp/scripts/analyze_function.py` for a structured JSON evidence snapshot;
+- `decomp/scripts/scout_functions.py` to rank practical first targets.
+
+Keep the raw JSON artifact for the iteration ledger. It makes later hypotheses reproducible instead of relying on screenshots or transient Ghidra state.
+
 Prefer PyGhidra or headless Ghidra for repeatable analysis.
 
 Collect:
@@ -46,6 +53,8 @@ Collect:
 Treat decompiler C as a hypothesis, not ground truth.
 
 ## 3. Build an evidence-backed semantic model
+
+Separate **observations** from **inferences**. An observation is directly present in assembly/P-code/metadata; an inference is a proposed explanation. Never feed an inference back into the evidence set as if it were a fact.
 
 Infer:
 
@@ -74,6 +83,8 @@ Use project-native typedefs, structs and macros. Preserve the target translation
 Prefer source-level compiler steering over inline assembly.
 
 ## 5. Compile and compare
+
+If the project exposes JSON diff output, preserve it as an artifact. Record the first mismatch rather than only the overall percentage. When no machine-readable diff exists, capture the smallest useful textual diff and the exact command used.
 
 Use the fastest authoritative local comparison available.
 
@@ -117,6 +128,13 @@ Then change one thing and re-run the diff.
 
 ## 7. Keep a hypothesis ledger
 
+Use a compact machine-readable record when possible:
+
+    iteration, target, hypothesis, evidence, source_change,
+    match_before, match_after, first_mismatch, decision
+
+A rejected hypothesis is valuable state. Record it explicitly so an agent does not cycle back to the same explanation.
+
 Record every meaningful experiment:
 
     iteration
@@ -132,6 +150,8 @@ Do not repeat failed hypotheses.
 Do not impose an arbitrary 15-iteration limit when builds are cheap. Continue while experiments provide evidence, subject to the user's budget and a runaway-loop guard.
 
 ## 8. Validate globally
+
+A scout score is only a prioritization heuristic. It does **not** establish that a function is unmatched, easy, or semantically understood. Confirm all of those with the project's source and comparison data.
 
 After an exact function match:
 
