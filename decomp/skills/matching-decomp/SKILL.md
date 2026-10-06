@@ -28,7 +28,7 @@ Do not assume ELF, x86_64, Ninja, or a particular compare command.
 For repeatable work, use the repository helpers when available:
 
 - `decomp/scripts/analyze_function.py` for a structured JSON evidence snapshot;
-- `decomp/scripts/scout_functions.py` to rank practical first targets.
+- `decomp/scripts/scout_functions.py` to rank practical first targets. Its preferred signals are known `nonmatching` status, small instruction count, resolved signatures, few globals, simple CFG, nearby matching functions, existing structures/types, and absence of known problematic constructs.
 
 Keep the raw JSON artifact for the iteration ledger. It makes later hypotheses reproducible instead of relying on screenshots or transient Ghidra state.
 
