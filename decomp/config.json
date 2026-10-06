@@ -6,10 +6,12 @@
   "permissions": {
     "bash": {
       "allow": [
-        "python .opencode/skills/ghidra-reverse/scripts/extract_decomp.py *",
+        "python *extract_decomp.py *",
+        "python *pcode_rename.py *",
+        "python .opencode/skills/matching-decomp/scripts/*",
         "analyzeHeadless *",
         "ninja *",
-        "objdiff diff *"
+        "objdiff *"
       ]
     }
   }
