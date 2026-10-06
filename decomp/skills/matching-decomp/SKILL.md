@@ -1,94 +1,209 @@
 ---
 name: matching-decomp
-description: Decompile binaries with Ghidra or PyGhidra and iteratively match the generated C against the original assembly until objdiff reports 100 percent. Use for matching decompilation, reverse engineering of MIPS PowerPC ARM or x86 binaries, legacy compilers (IDO, MWCC, GCC 2.x/3.x), ninja + objdiff workflows, function matching, and byte-accurate C reconstruction from ELF or object files.
+description: Analyze legacy game binaries with Ghidra/PyGhidra and iteratively reconstruct C/C++ until the project's exact build produces a matching object or binary. Use for ARM/Thumb, MIPS, PowerPC, x86 and legacy compilers such as agbcc, IDO, MWCC and old GCC.
 ---
 
 # Matching Decompilation
 
-Produce C source that compiles to the **exact same instructions** as a target function in a binary. Matching is measured by `objdiff` (or equivalent). Byte-accurate match is the only success criterion.
+The goal is not merely to understand a function. The goal is to reproduce the target machine code under the project's exact compiler, flags, linker and translation-unit conditions.
 
-## Prerequisites
+**Success criterion:** the project's authoritative comparison reports an exact match.
 
-The environment must provide:
-- **PyGhidra** (`pip install pyghidra`) or Ghidra `analyzeHeadless`
-- A matching project with `ninja` build and `objdiff`
-- Project headers defining types such as `s32`, `u16`, `f32`, `u8*`, etc.
+## 1. Inspect before editing
 
-If tools are missing, tell the user what to install before proceeding.
+Identify:
 
-## Workflow
+- architecture, endianness and ABI;
+- compiler/toolchain and exact flags;
+- build system and authoritative compare command;
+- target source/translation unit;
+- objdiff/decomp.me configuration;
+- existing typedefs, structs and macros;
+- nearby already-matching functions.
 
-### 1. Extract decompiled C
+Do not assume ELF, x86_64, Ninja, or a particular compare command.
 
-Run the extraction script (preferred):
+## 2. Analyze with Ghidra
 
-```bash
-python scripts/extract_decomp.py <binary_path> <function_name>
-```
+Prefer PyGhidra or headless Ghidra for repeatable analysis.
 
-It prints JSON with `function`, `address`, and `c_code`.
+Collect:
 
-If only headless Ghidra is available, fall back to `analyzeHeadless` and parse the decompiler output manually.
+- function address and bounds;
+- current signature and calling convention;
+- assembly;
+- P-code;
+- CFG/basic blocks;
+- callers/callees;
+- Xrefs;
+- strings and referenced data;
+- imports/exports;
+- stack offsets/frame size;
+- global/RODATA/BSS references;
+- load/store widths and alignment;
+- constants and jump tables.
 
-Optional semantic cleanup on `main` only:
+Treat decompiler C as a hypothesis, not ground truth.
 
-```bash
-python scripts/pcode_rename.py <binary_path>
-```
+## 3. Build an evidence-backed semantic model
 
-### 2. Normalize syntax
+Infer:
 
-Transform Ghidra pseudocode into compiler-friendly C:
+- return type and parameters;
+- local variable types;
+- structs and arrays;
+- control-flow constructs;
+- memory-region ownership;
+- call argument mapping.
 
-- Map Ghidra types to project types (`int` to `s32`, `undefined4` to `u32`, pointers to `u8*` or struct pointers).
-- Restore correct parameter names and return type from the function signature or project headers.
-- Remove Ghidra artefacts (`CONCAT`, `ZEXT`, temporary names like `uVar1`).
-- Prefer the coding style of the existing `src/` tree.
+For non-obvious conclusions keep confidence and evidence, e.g.:
 
-Write the candidate into the correct source file under `src/`.
+    enemyCount
+    confidence: 0.91
+    evidence:
+      - incremented in loop
+      - compared with table length
+      - used as array index
 
-### 3. Compile-and-match loop (max 15 iterations)
+Never invent names or types only to make the C look clean.
 
-Each iteration:
+## 4. Produce the smallest candidate
 
-```bash
-ninja && objdiff diff --json --function <function_name>
-```
+Use project-native typedefs, structs and macros. Preserve the target translation unit and avoid unrelated cleanup.
 
-Interpret the result:
+Prefer source-level compiler steering over inline assembly.
 
-| Result | Action |
-|--------|--------|
-| Compilation error | Fix types, missing includes, struct members, macros. Re-run. |
-| Match = 100.0% | **SUCCESS.** Stop. Commit with message `decomp: Match <function_name>`. |
-| Match < 100% | Read the instruction diff. Apply heuristics from [references/compiler-heuristics.md](references/compiler-heuristics.md). Edit C and re-evaluate. |
+## 5. Compile and compare
 
-Never stop on partial matches (85%, 95%, ...). Continue until 100% or the iteration limit.
+Use the fastest authoritative local comparison available.
 
-### 4. When stuck
+Typical commands may look like:
 
-If after ~10 iterations the same few instructions keep mismatching:
+    ninja
+    objdiff diff --json --function <function>
 
-1. Dump the current assembly side-by-side (`objdiff` output).
-2. Consult [references/compiler-heuristics.md](references/compiler-heuristics.md) for the specific symptom.
-3. Try a more aggressive rewrite (reorder locals, change loop shape, add/remove blocks `{}` to alter stack frame).
-4. If still blocked, report the remaining mismatch and ask the user for domain knowledge (struct layouts, known macros, compiler flags).
+or:
 
-## Constraints
+    make compare
 
-- Matching accuracy overrides clean or modern C style.
-- Prefer the project's existing idioms and macros over inventing new ones.
-- Do not invent symbols or globals that do not exist in the binary or headers.
-- Keep changes minimal and focused on the target function.
+Parse the result for:
 
-## Scripts
+- match percentage;
+- first mismatching instruction;
+- changed registers;
+- changed immediates;
+- changed stack offsets;
+- changed branches;
+- changed calls.
 
-| Script | Purpose |
-|--------|---------|
-| [scripts/extract_decomp.py](scripts/extract_decomp.py) | Headless decompile of any named function to JSON |
-| [scripts/pcode_rename.py](scripts/pcode_rename.py) | Optional P-code heuristics to rename locals in `main` |
+A high partial match is not success.
 
-## References
+## 6. Diagnose before changing code
 
-- [references/compiler-heuristics.md](references/compiler-heuristics.md) — register swaps, control-flow, stack, immediates
-- [references/setup.md](references/setup.md) — tool installation and minimal matching project layout
+Classify the mismatch first:
+
+| Symptom | First hypothesis |
+|---|---|
+| stack size/offset | local type, alignment, lifetime, scope |
+| same operations/different registers | declaration/evaluation order, live ranges |
+| branch layout differs | condition polarity, loop form, early return |
+| load/store width differs | signedness/type width |
+| address materialization differs | symbol vs constant, array shape |
+| call arguments differ | signature/ABI/evaluation order |
+| extra/missing instruction | expression shape/compiler idiom |
+| neighbour regressed | translation-unit/compiler coupling |
+
+Then change one thing and re-run the diff.
+
+## 7. Keep a hypothesis ledger
+
+Record every meaningful experiment:
+
+    iteration
+    hypothesis
+    source change
+    match before
+    match after
+    instruction delta
+    decision
+
+Do not repeat failed hypotheses.
+
+Do not impose an arbitrary 15-iteration limit when builds are cheap. Continue while experiments provide evidence, subject to the user's budget and a runaway-loop guard.
+
+## 8. Validate globally
+
+After an exact function match:
+
+1. Run the project's full object/ROM comparison.
+2. Check neighbouring functions for regressions.
+3. Remove temporary barriers, register pins and debugging code.
+4. Review the final source diff.
+
+This is especially important for GBA/agbcc: code generation can couple functions in the same translation unit.
+
+## 9. Architecture-specific guidance
+
+### GBA / agbcc
+
+Pay special attention to:
+
+- symbol references vs integer address constants;
+- multidimensional array shape;
+- bitfield container width;
+- global reloads vs cached values;
+- temporary width;
+- local lifetime and stack layout;
+- operand order;
+- linker-script symbols;
+- full-ROM coupling.
+
+### MIPS / IDO
+
+Pay special attention to:
+
+- delay slots;
+- o32 argument rules;
+- branch polarity/layout;
+- declaration order;
+- sign extension;
+- HI/LO operations;
+- struct offsets.
+
+### PowerPC / MWCC
+
+Pay special attention to:
+
+- stack alignment;
+- register save/restore;
+- TOC/global addressing;
+- scheduling;
+- aggregate passing;
+- compiler-specific struct layout.
+
+## 10. Failure handling
+
+When C and assembly disagree:
+
+1. Trust the instruction stream.
+2. Inspect P-code for the disputed operation.
+3. Check ABI and callers/callees.
+4. Test the smallest source-level hypothesis.
+5. Recompile and compare.
+
+If the environment cannot build or compare, report the exact blocker. Never claim a match from semantic similarity alone.
+
+## Output
+
+For analysis, report:
+
+1. target and architecture;
+2. ABI/compiler/build facts;
+3. signature hypothesis;
+4. semantic findings;
+5. evidence/confidence;
+6. candidate C;
+7. comparison result;
+8. next hypothesis if unmatched.
+
+For completion, report exact-match status and the verification command.
