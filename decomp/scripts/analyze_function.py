@@ -40,7 +40,7 @@ def resolve_function(program, query):
         except Exception:
             pass
 
-    current = getFunctionContaining(currentAddress)
+    current = safe(lambda: fm.getFunctionContaining(currentAddress))
     if current is not None:
         return current
 
