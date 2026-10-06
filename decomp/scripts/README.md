@@ -44,3 +44,52 @@ For authoritative project status, pass a small JSON metadata file as the first s
 ```
 
 This keeps the scout useful across different decompilation projects without hard-coding one project's symbol conventions.
+
+
+## inspect_project.py
+
+Read-only project discovery helper:
+
+    python3 inspect_project.py /path/to/project
+
+It reports build/config files, matching/nonmatching directories, source-file counts and useful build/decompilation signals. It does not infer the authoritative commands; the agent must inspect the project configuration.
+
+## parse_compare.py
+
+Best-effort parser for captured compare output:
+
+    python3 parse_compare.py .decomp-agent/targets/<target>/iteration-001-compare.log
+
+It extracts explicit match percentages, first-mismatch addresses and failure/match evidence. It is not a replacement for objdiff or the project's own compare command.
+
+## run_match.py
+
+Safe experiment harness:
+
+    python3 run_match.py --project . --target sub_0804B254 \
+      --build-command "make -j4" \
+      --compare-command "make compare" \
+      --iterations 1 --dry-run
+
+Dry-run executes nothing. To execute the explicitly supplied commands:
+
+    python3 run_match.py --project . --target sub_0804B254 \
+      --build-command "make -j4" \
+      --compare-command "make compare" \
+      --iterations 1 --force
+
+The harness records state under .decomp-agent/, including raw logs and hypotheses.jsonl. It intentionally does not modify source code.
+
+## Recommended end-to-end workflow
+
+For a first target:
+
+    inspect_project.py .
+    scout_functions.py
+    analyze_function.py <target>
+    run_match.py --dry-run
+    [LLM proposes/applies one source change]
+    run_match.py --force
+    parse_compare.py <raw-log>
+
+See decomp/MANUAL.md for the complete Klonoa workflow and safety rules.

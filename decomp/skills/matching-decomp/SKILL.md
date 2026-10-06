@@ -227,3 +227,34 @@ For analysis, report:
 8. next hypothesis if unmatched.
 
 For completion, report exact-match status and the verification command.
+
+
+## 11. Use the agent harness
+
+For a real project, use the helpers as a pipeline rather than invoking them as isolated scripts:
+
+1. Run decomp/scripts/inspect_project.py and save its JSON as the project baseline.
+2. Identify the authoritative build and compare commands from the project itself.
+3. Scout candidates with Ghidra.
+4. Run decomp/scripts/analyze_function.py for one target and save its JSON evidence.
+5. Ask the coding agent to propose exactly one source change.
+6. Run decomp/scripts/run_match.py --dry-run to verify the commands before execution.
+7. Apply the single source change.
+8. Run decomp/scripts/run_match.py --force for one build/compare experiment.
+9. Parse the raw compare log with decomp/scripts/parse_compare.py.
+10. Record the hypothesis, evidence, source change, result and first mismatch.
+11. Repeat until exact match or a concrete blocker.
+
+The harness deliberately does not edit source or invent commands. The LLM is the reasoning layer; the scripts are the evidence, execution and audit layer.
+
+## 12. Safety and reproducibility
+
+Before autonomous experiments:
+
+- require a clean git worktree or a dedicated target branch;
+- preserve raw Ghidra JSON;
+- preserve raw build/compare logs;
+- make one source change per iteration;
+- never treat a heuristic scout score as proof;
+- never treat a parser result as authoritative when the project provides a stronger compare result;
+- for GBA/agbcc, run the project's full verification after a function-level match.
