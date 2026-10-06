@@ -1,0 +1,16 @@
+{
+  "skills": {
+    "auto_discover": true,
+    "paths": [".opencode/skills/"]
+  },
+  "permissions": {
+    "bash": {
+      "allow": [
+        "python .opencode/skills/ghidra-reverse/scripts/extract_decomp.py *",
+        "analyzeHeadless *",
+        "ninja *",
+        "objdiff diff *"
+      ]
+    }
+  }
+}
