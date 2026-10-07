@@ -74,15 +74,27 @@ def detect_shell() -> dict[str, str | None]:
     }
 
 
+def ghidra_headless_path() -> str | None:
+    from_env = os.environ.get("GHIDRA_HOME")
+    if from_env:
+        base = Path(from_env)
+        for name in ("analyzeHeadless.bat", "analyzeHeadless"):
+            candidate = base / "support" / name
+            if candidate.exists():
+                return str(candidate)
+            candidate = base / "bin" / name
+            if candidate.exists():
+                return str(candidate)
+    return command_path("analyzeHeadless", "analyzeHeadless.bat", "analyzeHeadless.bat.exe")
+
+
 def tool_checks() -> dict[str, Any]:
     return {
         "git": command_path("git", "git.exe"),
         "ninja": command_path("ninja", "ninja.exe"),
         "make": command_path("make", "make.exe"),
         "objdiff": command_path("objdiff", "objdiff.exe"),
-        "ghidra_headless": command_path(
-            "analyzeHeadless", "analyzeHeadless.bat", "analyzeHeadless.bat.exe"
-        ),
+        "ghidra_headless": ghidra_headless_path(),
     }
 
 
