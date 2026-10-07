@@ -19,6 +19,8 @@ The project has source under `src/` and `libs/`. Its documented workflow uses `t
 
 ## Workflow
 
+Before indexing, complete the target project's environment preflight. On Windows, do not assume `python3`; use the interpreter discovered by preflight. If Python is unavailable, stop until the environment is fixed.
+
 1. Locate a local clone of the reference repository.
 2. Record the exact reference commit and game version when known.
 3. Run `decomp/scripts/analyze_reference_project.py <reference-root>` to build an index.
