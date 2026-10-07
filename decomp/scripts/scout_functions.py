@@ -103,6 +103,39 @@ def collect_instructions(program, function):
     return list(program.getListing().getInstructions(function.getBody(), True))
 
 
+def control_flow_evidence(program, function):
+    """Return conservative branch/loop/switch evidence for challenge selection."""
+    instructions = collect_instructions(program, function)
+    body = function.getBody()
+    has_branch = False
+    has_loop = False
+    has_switch = False
+
+    for instruction in instructions:
+        flow_type = safe(lambda i=instruction: i.getFlowType())
+        if flow_type is not None:
+            has_branch = has_branch or safe(lambda f=flow_type: f.isJump(), False)
+            has_switch = has_switch or safe(lambda f=flow_type: f.isComputed(), False)
+
+        for target in safe(lambda i=instruction: i.getFlows(), []) or []:
+            try:
+                if body.contains(target) and target.getOffset() <= instruction.getAddress().getOffset():
+                    has_loop = True
+            except Exception:
+                continue
+
+        flows = safe(lambda i=instruction: list(i.getFlows()), []) or []
+        if len(flows) > 1:
+            has_switch = True
+
+    return {
+        "has_branch": bool(has_branch),
+        "has_loop": bool(has_loop),
+        "has_switch": bool(has_switch),
+        "control_flow_confirmed": bool(has_branch or has_loop or has_switch),
+    }
+
+
 def count_globals(program, function):
     listing = program.getListing()
     count = 0
@@ -212,6 +245,7 @@ def score_function(program, function, metadata):
     globals_count = count_globals(program, function)
     structs = defined_structs(function)
     flags = complexity_flags(program, function)
+    control_flow = control_flow_evidence(program, function)
     status = status_for(function, metadata)
     known_matching_neighbors = neighbor_matching_evidence(program, function, metadata)
 
@@ -337,6 +371,7 @@ def score_function(program, function, metadata):
         "globals": globals_count,
         "defined_structs": structs,
         "problematic_constructs": flags,
+        **control_flow,
         "nearby_matching": known_matching_neighbors,
         "reasons": reasons,
         "penalties": penalties,

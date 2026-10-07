@@ -18,6 +18,7 @@ $python = Get-Executable @("py", "python", "python3")
 $git = Get-Executable @("git", "git.exe")
 $ninja = Get-Executable @("ninja", "ninja.exe")
 $objdiff = Get-Executable @("objdiff", "objdiff.exe")
+$objdiffCli = Get-Executable @("objdiff-cli", "objdiff-cli.exe")
 $pwsh = Get-Executable @("pwsh", "pwsh.exe")
 $powershell = Get-Executable @("powershell", "powershell.exe")
 
@@ -53,6 +54,7 @@ $result = [ordered]@{
         git = $git
         ninja = $ninja
         objdiff = $objdiff
+        objdiff_cli = $objdiffCli
     }
     project = [ordered]@{
         path = $project

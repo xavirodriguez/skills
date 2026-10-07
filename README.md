@@ -21,6 +21,27 @@ codex plugin marketplace add xavirodriguez/skills --ref <branch>
 
 Después de instalar o actualizar un plugin, inicia un hilo nuevo de Codex para cargar la versión actualizada.
 
+## ph-challenge
+
+Workflow específico para el challenge de decompilación de Phantom Hourglass.
+
+Calcula y documenta automáticamente:
+
+- funciones restantes sin decompilar según el reporte autoritativo de objdiff;
+- P75 del tamaño de las funciones restantes;
+- candidatos Tier 1;
+- candidatos Tier 2 que cumplen 256 bytes + P75 + control flow;
+- candidatos Tier 3 ordenados por señales objetivas de dificultad.
+
+Uso:
+
+```powershell
+<python> decomp/scripts/challenge_selector.py .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/scout.json --top 20
+```
+
+El selector no decide por sí solo si una función contiene lógica de juego real: esa comprobación requiere inspección manual.
+
+
 ## matching-decomp
 
 Skill para **matching decompilation** de juegos y software legacy: Ghidra/PyGhidra + evidencia estructurada + hipótesis de código fuente + build/compare reproducible.
