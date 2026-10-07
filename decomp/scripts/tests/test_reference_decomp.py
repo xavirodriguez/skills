@@ -102,6 +102,24 @@ class ReferenceDecompilerTests(unittest.TestCase):
                 "skip_by_default",
             )
 
+    def test_reference_objdiff_complete_is_recorded(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            src = root / "src"
+            src.mkdir()
+            source = src / "sample.cpp"
+            source.write_text("ARM void func_02001000() {}\n", encoding="utf-8")
+            objdiff = {
+                "units": [{
+                    "target_path": "src/sample.cpp",
+                    "metadata": {"complete": True},
+                }]
+            }
+            result = analyze(root, None, {"src/sample.cpp": "complete"})
+            function = result["functions"][0]
+            self.assertEqual(function["reference_build_status"], "complete")
+            self.assertEqual(result["reference_build"]["complete_units"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
