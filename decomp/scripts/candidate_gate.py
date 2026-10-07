@@ -99,6 +99,7 @@ def gate(objdiff: dict[str, Any], reference: dict[str, Any]) -> dict[str, Any]:
                     "address": fn.get("address"),
                     "status": fn.get("status"),
                     "recommended_action": fn.get("recommended_action"),
+                    "reference_build_status": fn.get("reference_build_status"),
                 }
                 for fn in refs
             ],
