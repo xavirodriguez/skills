@@ -3,23 +3,49 @@
 
 It never guesses project commands and never edits source. The LLM agent remains
 responsible for interpreting Ghidra evidence and proposing source changes.
+Commands run through an explicit shell so Windows PowerShell does not silently
+fall back to cmd.exe while the outer agent uses PowerShell syntax.
 """
 from __future__ import annotations
 import argparse
 import json
+import os
+import shutil
 import subprocess
 import time
 from pathlib import Path
 
-def run(command: str, cwd: Path) -> tuple[int, str]:
+def build_process_args(command: str, shell: str) -> list[str]:
+    if shell == "powershell":
+        return ["powershell.exe", "-NoProfile", "-Command", command]
+    if shell == "pwsh":
+        return ["pwsh", "-NoProfile", "-Command", command]
+    if shell == "bash":
+        return ["bash", "-lc", command]
+    if shell == "cmd":
+        return ["cmd.exe", "/d", "/s", "/c", command]
+    raise ValueError(f"Unsupported shell: {shell}")
+
+
+def detect_shell() -> str:
+    if os.name != "nt":
+        return "bash"
+    return "pwsh" if shutil.which("pwsh") else "powershell"
+
+
+def run(command: str, cwd: Path, shell: str) -> tuple[int, str]:
     started = time.time()
     process = subprocess.run(
-        command, cwd=cwd, shell=True, text=True,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        build_process_args(command, shell),
+        cwd=cwd,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
     )
     elapsed = round(time.time() - started, 3)
     return process.returncode, (
-        f"$ {command}\n\n{process.stdout}\n\n"
+        f"$ [{shell}] {command}\n\n{process.stdout}\n\n"
         f"[exit={process.returncode}, seconds={elapsed}]\n"
     )
 
@@ -35,6 +61,7 @@ def main() -> int:
     parser.add_argument("--compare-command")
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--shell", choices=("auto", "powershell", "pwsh", "bash", "cmd"), default="auto")
     parser.add_argument("--force", action="store_true", help="Allow command execution.")
     args = parser.parse_args()
 
@@ -42,6 +69,8 @@ def main() -> int:
         parser.error("--iterations must be >= 1")
     if args.dry_run and args.force:
         parser.error("--dry-run and --force are mutually exclusive")
+
+    shell = detect_shell() if args.shell == "auto" else args.shell
 
     root = Path(args.project).resolve()
     state = root / ".decomp-agent"
@@ -53,6 +82,7 @@ def main() -> int:
         "target": args.target,
         "build_command": args.build_command,
         "compare_command": args.compare_command,
+        "shell": shell,
         "iterations": args.iterations,
         "dry_run": args.dry_run,
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -74,6 +104,7 @@ def main() -> int:
             "target": args.target,
             "build_command": args.build_command,
             "compare_command": args.compare_command,
+            "shell": shell,
             "iterations": args.iterations,
             "message": "No command executed and no source modified.",
         }, indent=2))
@@ -85,11 +116,11 @@ def main() -> int:
 
     ledger = state / "hypotheses.jsonl"
     for iteration in range(1, args.iterations + 1):
-        build_code, build_log = run(args.build_command, root)
+        build_code, build_log = run(args.build_command, root, shell)
         (target_state / f"iteration-{iteration:03d}-build.log").write_text(build_log, encoding="utf-8")
         compare_code, compare_log = (0, "")
         if build_code == 0:
-            compare_code, compare_log = run(args.compare_command, root)
+            compare_code, compare_log = run(args.compare_command, root, shell)
             (target_state / f"iteration-{iteration:03d}-compare.log").write_text(compare_log, encoding="utf-8")
 
         append_jsonl(ledger, {
