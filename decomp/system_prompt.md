@@ -182,3 +182,12 @@ Use the reference index to avoid duplicated work:
 - A reference repository is never a substitute for target-binary evidence.
 
 The strongest proof remains the target project's authoritative binary comparison. The strongest available reference evidence is its own verified build/report output; source comments and absence of `non-matching` markers are weaker.
+
+## Challenge mode
+
+When the user is completing a decompilation challenge, use `ph-challenge` for Phantom Hourglass. It adds explicit Tier 1/Tier 2/Tier 3 selection gates on top of the normal matching workflow.
+
+Treat the project's authoritative objdiff report as the source of truth for remaining work. For Tier 2, require all challenge constraints: undecompiled status, at least 256 bytes, at least the 75th percentile of remaining undecompiled functions by size, and confirmed control flow from Ghidra evidence.
+
+Never claim "real game logic" from heuristics alone. Manually verify that the selected function is not a getter, stub, wrapper, initializer or table/data helper before using it as a Tier 2 submission.
+
