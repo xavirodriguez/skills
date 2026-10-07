@@ -128,3 +128,29 @@ If an explicit address offset is required, it must come from independent binary/
 
 Do not use an offset merely because it produces more matches.
 
+
+
+## Reference decompilation evidence
+
+When a mature decompilation project for the same game exists, inspect it before starting a target from scratch.
+
+For Zelda: Phantom Hourglass, use the reference project:
+
+    https://github.com/zeldaret/ph
+
+Run:
+
+    python3 /path/to/skills/decomp/scripts/analyze_reference_project.py \
+      /path/to/ph \
+      --xmap .decomp-agent/xmap-analysis.json \
+      > .decomp-agent/reference/ph-analysis.json
+
+Use the reference index to avoid duplicated work:
+
+- `unmarked` functions are **apparently matching**. Do not re-decompile them unless target evidence or an authoritative compare demonstrates a mismatch.
+- `known_nonmatching_equivalent` functions should be treated as semantically useful prior work; focus on code generation and exact matching.
+- `known_nonmatching` functions should be reused as the starting source/context rather than reconstructed from scratch.
+- Prefer exact address correlation with XMAP/Ghidra over name-only correlation.
+- A reference repository is never a substitute for target-binary evidence.
+
+The strongest proof remains the target project's authoritative binary comparison. The strongest available reference evidence is its own verified build/report output; source comments and absence of `non-matching` markers are weaker.

@@ -248,3 +248,50 @@ A useful result looks conceptually like:
 The correlator reports unmatched XMAP symbols and unmatched Ghidra functions so the agent can distinguish missing analysis from an actual address mismatch.
 
 Do not pass an address offset unless it has been independently validated from the binary/load layout. A larger match count is not evidence that an offset is correct.
+
+
+## 14. Reference decompilation projects
+
+A reference project can save a large amount of duplicated reverse-engineering work. For Phantom Hourglass, the main reference is:
+
+    https://github.com/zeldaret/ph
+
+Clone it separately from the target project:
+
+    git clone https://github.com/zeldaret/ph.git
+
+Index its existing source:
+
+    python3 /path/to/skills/decomp/scripts/analyze_reference_project.py \
+      /path/to/ph \
+      > .decomp-agent/reference/ph-analysis.json
+
+With an XMAP already parsed:
+
+    python3 /path/to/skills/decomp/scripts/analyze_reference_project.py \
+      /path/to/ph \
+      --xmap .decomp-agent/xmap-analysis.json \
+      > .decomp-agent/reference/ph-analysis.json
+
+The analyzer recognizes the `// non-matching` convention used by PH and function names that encode addresses, such as `func_0203c72c` and `func_ov014_02144820`.
+
+Interpret the result as follows:
+
+    unmarked
+        -> apparently matching -> skip by default
+
+    known_nonmatching_equivalent
+        -> semantic implementation already considered equivalent
+        -> reuse it and focus on exact code generation
+
+    known_nonmatching
+        -> reuse it as the starting implementation/context
+        -> continue matching
+
+For functions with no address encoded in their name, the analyzer can still preserve the source implementation and may correlate by exact name when the XMAP symbol name is available.
+
+### Do not confuse "unmarked" with "proved"
+
+The PH source tree uses explicit `// non-matching` markers. Their absence is useful project evidence, but it is not an exact-match guarantee.
+
+When `objdiff`/build reports from the reference project are available, prefer those results over source comments. Never let the reference project override contradictory target ROM, target XMAP or target Ghidra evidence.
