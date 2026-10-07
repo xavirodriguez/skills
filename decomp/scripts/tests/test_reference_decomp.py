@@ -49,25 +49,25 @@ class ReferenceDecompilerTests(unittest.TestCase):
                 if item["address"] is not None
             }
 
-            self.assertEqual(by_address["0x00001000"]["status"], "unmarked")
+            self.assertEqual(by_address["0x02001000"]["status"], "unmarked")
             self.assertEqual(
-                by_address["0x00001000"]["recommended_action"],
+                by_address["0x02001000"]["recommended_action"],
                 "skip_by_default",
             )
             self.assertEqual(
-                by_address["0x00001020"]["status"],
+                by_address["0x02001020"]["status"],
                 "known_nonmatching",
             )
             self.assertEqual(
-                by_address["0x00001030"]["status"],
+                by_address["0x02001030"]["status"],
                 "known_nonmatching_equivalent",
             )
             self.assertEqual(
-                by_address["0x00001030"]["recommended_action"],
+                by_address["0x02001030"]["recommended_action"],
                 "reuse_reference_fix_codegen",
             )
             self.assertEqual(
-                by_address["0x00001040"]["status_reason"],
+                by_address["0x02001040"]["status_reason"],
                 "regalloc",
             )
 
@@ -101,6 +101,24 @@ class ReferenceDecompilerTests(unittest.TestCase):
                 result["xmap_matches"][0]["reference_recommended_action"],
                 "skip_by_default",
             )
+
+    def test_reference_objdiff_complete_is_recorded(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            src = root / "src"
+            src.mkdir()
+            source = src / "sample.cpp"
+            source.write_text("ARM void func_02001000() {}\n", encoding="utf-8")
+            objdiff = {
+                "units": [{
+                    "target_path": "src/sample.cpp",
+                    "metadata": {"complete": True},
+                }]
+            }
+            result = analyze(root, None, {"src/sample.cpp": "complete"})
+            function = result["functions"][0]
+            self.assertEqual(function["reference_build_status"], "complete")
+            self.assertEqual(result["reference_build"]["complete_units"], 1)
 
 
 if __name__ == "__main__":

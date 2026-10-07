@@ -19,14 +19,17 @@ The project has source under `src/` and `libs/`. Its documented workflow uses `t
 
 ## Workflow
 
+Before indexing, complete the target project's environment preflight. On Windows, do not assume `python3`; use the interpreter discovered by preflight. If Python is unavailable, stop until the environment is fixed.
+
 1. Locate a local clone of the reference repository.
 2. Record the exact reference commit and game version when known.
-3. Run `decomp/scripts/analyze_reference_project.py <reference-root>` to build an index.
+3. Run `decomp/scripts/analyze_reference_project.py <reference-root>` to build an index. If a local reference `objdiff.json` exists, pass `--objdiff <reference-root>/objdiff.json` so complete units are recorded as stronger evidence.
 4. If an XMAP analysis exists, pass `--xmap .decomp-agent/xmap-analysis.json` to correlate functions by address.
-5. Before selecting a target, check the reference index:
+5. Before selecting a target, check the reference index and candidate gate:
    - `unmarked` -> **apparently matching**; skip re-decompilation by default.
    - `known_nonmatching_equivalent` -> semantic work is likely already present; focus on code generation/matching.
    - `known_nonmatching` -> reuse the existing implementation/context and continue matching it.
+   - a reference build status of `complete` -> strongest reference-side evidence; skip by default unless target evidence contradicts it.
 6. Prefer exact address correlations over source-name correlations.
 7. If a built reference `report.json`/objdiff result is available, use it as stronger evidence than source annotations.
 8. Never claim an exact match solely because the reference source is unmarked.

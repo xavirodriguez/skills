@@ -4,6 +4,40 @@ This guide explains how to use the matching-decomp skill with a real decomp.dev 
 
 ## What this version does
 
+For autonomous Phantom Hourglass runs, use `ph-decomp` as the entry point. It performs a mandatory environment preflight, reference-project gate, XMAP gate, candidate gate, then delegates to `matching-decomp`.
+
+## Production workflow
+
+### Windows command rules
+
+PowerShell is not Bash. Use separate commands:
+
+    Set-Location D:\xavi\ph
+    <python> <skills>\decomp\scripts\inspect_project.py .
+
+Never use `&&`, `||`, Bash heredocs, `mkdir -p`, or `python3 -c` inspection snippets in PowerShell.
+
+When Python is unavailable, run:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File <skills>\decomp\scripts\preflight.ps1 .
+
+The Python preflight should be the first helper once Python is available:
+
+    <python> <skills>\decomp\scripts\preflight.py . --reference <ph-reference> --xmap <xmap>
+
+The output is a machine-readable readiness contract. A blocked preflight is a hard stop.
+
+### Phantom Hourglass selection gate
+
+After inspection, build:
+
+    .decomp-agent/reference/ph-analysis.json
+    .decomp-agent/reference/candidate-gate.json
+    .decomp-agent/xmap-analysis.json
+
+Run `candidate_gate.py` before choosing a function. Do not interpret an incomplete objdiff unit as proof that all functions in its translation unit need decompilation.
+
+
 The workflow is split into safe, reproducible stages:
 
 1. Inspect the project and discover its real build/compare workflow.
