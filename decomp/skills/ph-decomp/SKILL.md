@@ -23,9 +23,9 @@ On POSIX:
 
     <python> <skills>/decomp/scripts/preflight.py <target> --reference <ph-reference> --xmap <xmap>
 
-Do not assume \`python3\` on Windows. Use the interpreter reported by preflight.
+Do not assume `python3` on Windows. Use the interpreter reported by preflight.
 
-Shell commands must match the active shell. In PowerShell do not use Bash chaining, Bash heredocs, \`source\`, \`mkdir -p\`, or other Bash-only syntax. Do not write inline Python for repository inspection when a helper script exists. Run commands as separate steps.
+Shell commands must match the active shell. In PowerShell do not use Bash chaining, Bash heredocs, `source`, `mkdir -p`, or other Bash-only syntax. Do not write inline Python for repository inspection when a helper script exists. Run commands as separate steps.
 
 If preflight reports a blocker, stop and report it. Do not improvise shell syntax or bypass the blocker.
 
@@ -42,10 +42,10 @@ If an ARM9 XMAP exists, parse it now, before the reference gate:
 For PH, identify:
 - EUR or USA version;
 - compiler and flags;
-- \`tools/configure.py\`;
+- `tools/configure.py`;
 - Ninja targets;
-- \`objdiff.json\`;
-- \`build/<version>/arm9.o.xMAP\`;
+- `objdiff.json`;
+- `build/<version>/arm9.o.xMAP`;
 - authoritative report/check commands.
 
 Never invent build or compare commands.
@@ -67,10 +67,10 @@ Then:
     <python> <skills>/decomp/scripts/candidate_gate.py <target>/objdiff.json <target>/.decomp-agent/reference/ph-analysis.json -o <target>/.decomp-agent/reference/candidate-gate.json
 
 The candidate gate is a hard selection filter:
-- \`skip_unit_by_default\`: do not re-decompile functions covered by unmarked reference source unless target evidence proves a mismatch.
-- \`inspect_reference_nonmatching\`: reuse the reference implementation/context and focus on exact code generation.
-- \`inspect_reference\`: inspect reference evidence manually before choosing a target.
-- \`target_analysis_allowed\`: no reference function was correlated to the unit.
+- `skip_unit_by_default`: do not re-decompile functions covered by unmarked reference source unless target evidence proves a mismatch.
+- `inspect_reference_nonmatching`: reuse the reference implementation/context and focus on exact code generation.
+- `inspect_reference`: inspect reference evidence manually before choosing a target.
+- `target_analysis_allowed`: no reference function was correlated to the unit.
 
 Do not equate an incomplete objdiff unit with every function in that unit being unmatched.
 
@@ -123,7 +123,7 @@ For the harness:
 
     <python> <skills>\decomp\scripts\run_match.py --project . --target <function> --shell powershell --build-command "ninja arm9" --compare-command "ninja report check" --dry-run
 
-Do not generate \`&&\`, \`||\`, Bash heredocs, or \`python3 -c\` inspection snippets in PowerShell.
+Do not generate `&&`, `||`, Bash heredocs, or `python3 -c` inspection snippets in PowerShell.
 
 ## 8. Stop conditions
 
