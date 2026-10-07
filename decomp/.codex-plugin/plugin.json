@@ -1,0 +1,20 @@
+{
+  "name": "decomp",
+  "version": "0.1.0",
+  "description": "Matching decompilation workflows for legacy game and software reverse engineering.",
+  "author": {
+    "name": "Xavi Rodríguez",
+    "url": "https://github.com/xavirodriguez"
+  },
+  "repository": "https://github.com/xavirodriguez/skills",
+  "license": "MIT",
+  "keywords": [
+    "decompilation",
+    "reverse-engineering",
+    "ghidra",
+    "objdiff",
+    "xmap",
+    "phantom-hourglass"
+  ],
+  "skills": "./skills/"
+}
