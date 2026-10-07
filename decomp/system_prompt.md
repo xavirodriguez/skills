@@ -101,3 +101,30 @@ Use original symbol names to improve context, but do not infer semantic responsi
 
 Preserve unclassified XMAP lines. If the generic parser cannot confidently interpret the format, inspect a real sample and add a format-specific parser rather than silently guessing.
 
+
+## XMAP/Ghidra integration
+
+When both an XMAP and Ghidra project are available, treat Ghidra as the supported reader of its own project database. Do not parse internal `*.rep`, `*.grf` or `*.gbf` files directly.
+
+Use the read-only Ghidra headless exporter:
+
+    analyzeHeadless <project-dir> <project-name> \
+      -process <program> \
+      -scriptPath /path/to/skills/decomp/scripts \
+      -postScript export_ghidra_program.py > .decomp-agent/ghidra-program.json
+
+Then correlate the parsed XMAP with that export:
+
+    python3 /path/to/skills/decomp/scripts/correlate_xmap.py \
+      .decomp-agent/xmap-analysis.json \
+      .decomp-agent/ghidra-program.json \
+      > .decomp-agent/xmap-ghidra.json
+
+The correlator is address-first. Exact address matches are HIGH confidence for identity, while semantic meaning remains a separate hypothesis. It never auto-discovers an address delta and never converts virtual addresses to ROM/file offsets.
+
+If an explicit address offset is required, it must come from independent binary/load-address evidence:
+
+    ... correlate_xmap.py xmap.json ghidra.json --address-offset 0x2000000
+
+Do not use an offset merely because it produces more matches.
+
