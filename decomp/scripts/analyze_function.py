@@ -189,9 +189,32 @@ def collect_memory(program, function):
     return {"stack_like_instructions": accesses, "data": data_refs}
 
 
+
+def load_xmap_correlation(path, function):
+    if not path:
+        return None
+
+    try:
+        with open(path, "r") as handle:
+            document = json.load(handle)
+    except Exception:
+        return None
+
+    target_entry = address_text(function.getEntryPoint())
+    target_name = function.getName()
+
+    for correlation in document.get("correlations", []):
+        if correlation.get("ghidra_address") == target_entry:
+            return correlation
+        if correlation.get("ghidra_name") == target_name:
+            return correlation
+
+    return None
+
 def main():
     args = getScriptArgs()
     query = args[0] if len(args) > 0 else None
+    correlation_path = args[1] if len(args) > 1 else None
     function = resolve_function(currentProgram, query)
 
     result = {
@@ -204,6 +227,9 @@ def main():
         "relationships": collect_relationships(currentProgram, function),
         "memory": collect_memory(currentProgram, function),
     }
+
+    if correlation_path:
+        result["xmap_correlation"] = load_xmap_correlation(correlation_path, function)
 
     print(json.dumps(result, indent=2, sort_keys=True))
 

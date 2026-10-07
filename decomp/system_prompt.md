@@ -85,3 +85,46 @@ Before a destructive or expensive run, use run_match.py --dry-run.
 ## Project status versus match proof
 
 Directories such as asm/nonmatchings are useful project annotations, but they are not proof by themselves. The authoritative project comparison remains the only completion criterion.
+
+
+## XMAP evidence
+
+When the project provides an XMAP/linker map, analyze it before deep function reconstruction.
+
+Use decomp/scripts/parse_xmap.py to create a conservative JSON baseline. Treat XMAP data as linker/build evidence and correlate it with the actual binary and Ghidra. Never assume a virtual address is a ROM offset.
+
+When XMAP symbols exist, prefer this evidence chain:
+
+    XMAP symbol -> virtual address -> binary offset -> Ghidra symbol/function -> assembly/P-code
+
+Use original symbol names to improve context, but do not infer semantic responsibilities solely from names. Distinguish explicit symbol sizes from sizes inferred from neighbouring symbols.
+
+Preserve unclassified XMAP lines. If the generic parser cannot confidently interpret the format, inspect a real sample and add a format-specific parser rather than silently guessing.
+
+
+## XMAP/Ghidra integration
+
+When both an XMAP and Ghidra project are available, treat Ghidra as the supported reader of its own project database. Do not parse internal `*.rep`, `*.grf` or `*.gbf` files directly.
+
+Use the read-only Ghidra headless exporter:
+
+    analyzeHeadless <project-dir> <project-name> \
+      -process <program> \
+      -scriptPath /path/to/skills/decomp/scripts \
+      -postScript export_ghidra_program.py > .decomp-agent/ghidra-program.json
+
+Then correlate the parsed XMAP with that export:
+
+    python3 /path/to/skills/decomp/scripts/correlate_xmap.py \
+      .decomp-agent/xmap-analysis.json \
+      .decomp-agent/ghidra-program.json \
+      > .decomp-agent/xmap-ghidra.json
+
+The correlator is address-first. Exact address matches are HIGH confidence for identity, while semantic meaning remains a separate hypothesis. It never auto-discovers an address delta and never converts virtual addresses to ROM/file offsets.
+
+If an explicit address offset is required, it must come from independent binary/load-address evidence:
+
+    ... correlate_xmap.py xmap.json ghidra.json --address-offset 0x2000000
+
+Do not use an offset merely because it produces more matches.
+
