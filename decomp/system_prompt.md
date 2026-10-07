@@ -85,6 +85,8 @@ Use the repository helpers as a controlled toolchain:
 
 The agent must not guess build commands. It must discover them from the target repository and pass them explicitly to the harness.
 
+On Windows, pass `--shell powershell` to `run_match.py` unless the environment explicitly selected another supported shell.
+
 The harness is intentionally not an autonomous source editor. It executes only explicit commands and records their output. Source editing remains an LLM responsibility so that every edit has a stated hypothesis and evidence.
 
 For every iteration:
