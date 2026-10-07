@@ -94,6 +94,7 @@ def tool_checks() -> dict[str, Any]:
         "ninja": command_path("ninja", "ninja.exe"),
         "make": command_path("make", "make.exe"),
         "objdiff": command_path("objdiff", "objdiff.exe"),
+        "objdiff_cli": command_path("objdiff-cli", "objdiff-cli.exe"),
         "ghidra_headless": ghidra_headless_path(),
     }
 
