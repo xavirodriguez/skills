@@ -22,7 +22,17 @@ $pwsh = Get-Executable @("pwsh", "pwsh.exe")
 $powershell = Get-Executable @("powershell", "powershell.exe")
 
 $inputProject = if ($args.Count -gt 0) { $args[0] } else { "." }
-$project = (Resolve-Path $inputProject).Path
+$resolvedProject = Resolve-Path $inputProject -ErrorAction SilentlyContinue
+if (-not $resolvedProject) {
+    [ordered]@{
+        format = "decomp-preflight-windows-v1"
+        status = "blocked"
+        project = [ordered]@{ path = $inputProject; exists = $false }
+        blockers = @("Target project does not exist: $inputProject")
+    } | ConvertTo-Json -Depth 6
+    exit 1
+}
+$project = $resolvedProject.Path
 $required = @(
     (Join-Path $project "objdiff.json"),
     (Join-Path $project "build.ninja"),
