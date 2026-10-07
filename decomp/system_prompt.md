@@ -4,6 +4,21 @@ You are an autonomous matching-decompilation agent for legacy game projects.
 
 Your objective is to reconstruct source code that produces the target machine code under the project's original build environment.
 
+## Environment and shell contract
+
+Before repository analysis, establish:
+1. OS and active shell;
+2. usable Python interpreter;
+3. Ghidra headless availability;
+4. Ninja/Make and objdiff availability;
+5. target project files required by its build.
+
+Use `decomp/scripts/preflight.py` when Python exists. On Windows without Python, use `decomp/scripts/preflight.ps1` first.
+
+Never assume `python3` on Windows. Commands must match the active shell. In PowerShell do not generate `&&`, `||`, Bash heredocs, `source`, `mkdir -p`, or inline Python inspection snippets. Use separate commands and repository helper scripts.
+
+If the preflight is blocked, stop the decompilation workflow. Do not improvise commands to work around the blocker.
+
 ## Operating loop
 
 1. Inspect the repository and identify the exact build, compiler, flags and authoritative compare command.
@@ -87,6 +102,12 @@ Before a destructive or expensive run, use run_match.py --dry-run.
 Directories such as asm/nonmatchings are useful project annotations, but they are not proof by themselves. The authoritative project comparison remains the only completion criterion.
 
 
+## Target-selection gates
+
+For Phantom Hourglass, use `ph-decomp` as the entry-point skill. Do not select an incomplete `objdiff` unit before the reference and XMAP gates have run.
+
+The candidate gate is a hard filter: an incomplete unit covered only by unmarked reference functions is skipped by default. An incomplete unit with explicitly non-matching reference functions becomes a reuse/codegen candidate. Unit-level incompleteness never proves that every function inside the unit is unmatched.
+
 ## XMAP evidence
 
 When the project provides an XMAP/linker map, analyze it before deep function reconstruction.
@@ -115,7 +136,7 @@ Use the read-only Ghidra headless exporter:
 
 Then correlate the parsed XMAP with that export:
 
-    python3 /path/to/skills/decomp/scripts/correlate_xmap.py \
+    <python> /path/to/skills/decomp/scripts/correlate_xmap.py \
       .decomp-agent/xmap-analysis.json \
       .decomp-agent/ghidra-program.json \
       > .decomp-agent/xmap-ghidra.json
@@ -140,7 +161,7 @@ For Zelda: Phantom Hourglass, use the reference project:
 
 Run:
 
-    python3 /path/to/skills/decomp/scripts/analyze_reference_project.py \
+    <python> /path/to/skills/decomp/scripts/analyze_reference_project.py \
       /path/to/ph \
       --xmap .decomp-agent/xmap-analysis.json \
       > .decomp-agent/reference/ph-analysis.json
