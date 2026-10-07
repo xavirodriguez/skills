@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -142,6 +143,50 @@ def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def normalize_source(path: str) -> str:
+    value = path.replace("\\", "/")
+    for marker in ("/src/", "/libs/"):
+        index = value.lower().find(marker.lower())
+        if index >= 0:
+            return value[index + 1:]
+    for marker in ("src/", "libs/"):
+        index = value.lower().find(marker.lower())
+        if index >= 0:
+            return value[index:]
+    return value.lstrip("./")
+
+
+def git_metadata(root: Path) -> dict[str, Any]:
+    result: dict[str, Any] = {"commit": None, "branch": None}
+    try:
+        result["commit"] = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=False, timeout=5,
+        ).stdout.strip() or None
+        result["branch"] = subprocess.run(
+            ["git", "-C", str(root), "branch", "--show-current"],
+            capture_output=True, text=True, check=False, timeout=5,
+        ).stdout.strip() or None
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return result
+
+
+def load_reference_build(path: Path | None) -> dict[str, str]:
+    if path is None or not path.is_file():
+        return {}
+    document = load_json(path)
+    statuses: dict[str, str] = {}
+    for unit in document.get("units", []):
+        target_path = unit.get("target_path")
+        if not isinstance(target_path, str):
+            continue
+        complete = unit.get("metadata", {}).get("complete")
+        if isinstance(complete, bool):
+            statuses[normalize_source(target_path)] = "complete" if complete else "incomplete"
+    return statuses
+
+
 def correlate_reference(
     functions: list[dict[str, Any]],
     xmap: dict[str, Any] | None,
@@ -203,7 +248,11 @@ def correlate_reference(
     return matches, unmatched
 
 
-def analyze(root: Path, xmap: dict[str, Any] | None) -> dict[str, Any]:
+def analyze(
+    root: Path,
+    xmap: dict[str, Any] | None,
+    reference_build: dict[str, str] | None = None,
+) -> dict[str, Any]:
     source_roots = [root / "src", root / "libs"]
     files = [
         path
@@ -225,14 +274,31 @@ def analyze(root: Path, xmap: dict[str, Any] | None) -> dict[str, Any]:
         action = function["recommended_action"]
         action_counts[action] = action_counts.get(action, 0) + 1
 
+    reference_build = reference_build or {}
+
+    for function in functions:
+        source_key = normalize_source(function["source_file"])
+        function["reference_build_status"] = reference_build.get(source_key)
+        if function["reference_build_status"] == "complete":
+            function["reference_build_note"] = (
+                "The reference objdiff unit is complete; this is stronger "
+                "evidence than an unmarked source annotation."
+            )
+
     matches, unmatched = correlate_reference(functions, xmap)
 
     return {
-        "format": "reference-decomp-analysis-v2",
+        "format": "reference-decomp-analysis-v3",
         "project": {
             "path": str(root),
             "name": root.name,
             "expected_repo": "https://github.com/zeldaret/ph",
+            "git": git_metadata(root),
+        },
+        "reference_build": {
+            "unit_count": len(reference_build),
+            "complete_units": sum(1 for status in reference_build.values() if status == "complete"),
+            "incomplete_units": sum(1 for status in reference_build.values() if status == "incomplete"),
         },
         "statistics": {
             "source_files": len(files),
@@ -262,11 +328,17 @@ def main() -> None:
     )
     parser.add_argument("project", type=Path)
     parser.add_argument("--xmap", type=Path)
+    parser.add_argument(
+        "--objdiff",
+        type=Path,
+        help="Optional reference objdiff.json; complete units strengthen match status.",
+    )
     parser.add_argument("-o", "--output", type=Path)
     args = parser.parse_args()
 
     xmap = load_json(args.xmap) if args.xmap else None
-    result = analyze(args.project.resolve(), xmap)
+    reference_build = load_reference_build(args.objdiff) if args.objdiff else None
+    result = analyze(args.project.resolve(), xmap, reference_build)
     rendered = json.dumps(result, indent=2, sort_keys=True)
 
     if args.output:
