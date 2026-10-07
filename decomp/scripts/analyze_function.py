@@ -190,7 +190,7 @@ def collect_memory(program, function):
 
 
 
-def load_xmap_correlation(path):
+def load_xmap_correlation(path, function):
     if not path:
         return None
 
@@ -200,17 +200,13 @@ def load_xmap_correlation(path):
     except Exception:
         return None
 
-    function_entry = address_text(currentAddress)
-    target_function = resolve_function(currentProgram, getScriptArgs()[0])
-    target_entry = address_text(target_function.getEntryPoint())
-    target_name = target_function.getName()
+    target_entry = address_text(function.getEntryPoint())
+    target_name = function.getName()
 
     for correlation in document.get("correlations", []):
         if correlation.get("ghidra_address") == target_entry:
             return correlation
         if correlation.get("ghidra_name") == target_name:
-            return correlation
-        if correlation.get("ghidra_address") == function_entry:
             return correlation
 
     return None
@@ -233,7 +229,7 @@ def main():
     }
 
     if correlation_path:
-        result["xmap_correlation"] = load_xmap_correlation(correlation_path)
+        result["xmap_correlation"] = load_xmap_correlation(correlation_path, function)
 
     print(json.dumps(result, indent=2, sort_keys=True))
 
