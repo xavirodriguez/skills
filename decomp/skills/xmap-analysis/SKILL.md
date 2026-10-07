@@ -20,8 +20,10 @@ The XMAP is **build/link evidence**, not semantic proof. Its highest value comes
 7. Correlate virtual addresses with the actual binary mapping. Never equate a virtual address with a ROM offset without evidence.
 8. Compare XMAP symbols with Ghidra's `FUN_*`, `DAT_*` and existing labels.
 9. Feed high-confidence names and layout information into function analysis.
-10. Keep inferred function sizes and semantic interpretations explicitly marked as inferred.
-11. Preserve raw lines that the parser cannot classify.
+10. Pass the correlation JSON to `analyze_function.py` when a function-level evidence snapshot is needed:
+    `... -postScript analyze_function.py <function> .decomp-agent/xmap-ghidra.json`
+11. Keep inferred function sizes and semantic interpretations explicitly marked as inferred.
+12. Preserve raw lines that the parser cannot classify.
 
 ## Evidence policy
 
@@ -64,3 +66,8 @@ Recommended top-level fields:
 - conflicts
 
 The parser is deliberately conservative. The Ghidra bridge uses `analyzeHeadless` and Ghidra's supported API rather than reading `*.rep/*.grf/*.gbf` internals directly. Extend the XMAP parser with a vendor-specific format only after inspecting a real XMAP sample.
+
+
+## Ghidra project boundary
+
+Treat the Ghidra project as an opaque database owned by Ghidra. Read it through `analyzeHeadless` and Ghidra scripts, not by parsing `Zelda.rep` internals such as `.grf` or `.gbf` files.
