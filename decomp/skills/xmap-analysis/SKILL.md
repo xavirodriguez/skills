@@ -14,12 +14,14 @@ The XMAP is **build/link evidence**, not semantic proof. Its highest value comes
 1. Preserve the original XMAP.
 2. Inspect its actual format before assuming a vendor/toolchain.
 3. Run `decomp/scripts/parse_xmap.py` to create a machine-readable baseline.
-4. Identify sections, symbols, addresses and any explicit sizes.
-5. Correlate virtual addresses with the actual binary mapping. Never equate a virtual address with a ROM offset without evidence.
-6. Compare XMAP symbols with Ghidra's `FUN_*`, `DAT_*` and existing labels.
-7. Feed high-confidence names and layout information into function analysis.
-8. Keep inferred function sizes and semantic interpretations explicitly marked as inferred.
-9. Preserve raw lines that the parser cannot classify.
+4. Export program-level Ghidra evidence with `export_ghidra_program.py`.
+5. Correlate XMAP symbols with the exported Ghidra functions/symbols using `correlate_xmap.py`.
+6. Identify sections, symbols, addresses and any explicit sizes.
+7. Correlate virtual addresses with the actual binary mapping. Never equate a virtual address with a ROM offset without evidence.
+8. Compare XMAP symbols with Ghidra's `FUN_*`, `DAT_*` and existing labels.
+9. Feed high-confidence names and layout information into function analysis.
+10. Keep inferred function sizes and semantic interpretations explicitly marked as inferred.
+11. Preserve raw lines that the parser cannot classify.
 
 ## Evidence policy
 
@@ -61,4 +63,4 @@ Recommended top-level fields:
 - hypotheses
 - conflicts
 
-The parser is deliberately conservative. Extend it with a vendor-specific parser only after inspecting a real XMAP sample.
+The parser is deliberately conservative. The Ghidra bridge uses `analyzeHeadless` and Ghidra's supported API rather than reading `*.rep/*.grf/*.gbf` internals directly. Extend the XMAP parser with a vendor-specific format only after inspecting a real XMAP sample.
