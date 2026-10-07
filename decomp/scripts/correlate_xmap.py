@@ -31,7 +31,7 @@ def parse_offset(value: str) -> int:
 def address_value(entry: dict[str, Any]) -> int | None:
     if isinstance(entry.get("address_int"), int):
         return entry["address_int"]
-    address = entry.get("address")
+    address = entry.get("address", entry.get("entry"))
     if address is None:
         return None
     try:
