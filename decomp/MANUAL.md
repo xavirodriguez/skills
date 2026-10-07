@@ -189,7 +189,7 @@ Because this project uses legacy GBA compilers and multiple compiler configurati
 
 When a linker map such as `arm9.o.xMAP` is available, parse it before choosing deep reverse-engineering targets:
 
-    python3 /path/to/skills/decomp/scripts/parse_xmap.py       arm9.o.xMAP > .decomp-agent/xmap-analysis.json
+    python3 /path/to/skills/decomp/scripts/parse_xmap.py arm9.o.xMAP > .decomp-agent/xmap-analysis.json
 
 The parser is intentionally conservative and format-agnostic. Inspect the raw XMAP if the result has a low format confidence or many unclassified lines.
 
