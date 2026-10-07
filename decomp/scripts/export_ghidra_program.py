@@ -10,7 +10,6 @@
 
 import json
 
-from ghidra.program.model.symbol import SourceType
 
 
 def safe(callable_, default=None):
