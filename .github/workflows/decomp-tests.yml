@@ -1,0 +1,22 @@
+name: Decomp helper tests
+
+on:
+  push:
+    paths:
+      - "decomp/**"
+      - ".github/workflows/decomp-tests.yml"
+  pull_request:
+    paths:
+      - "decomp/**"
+      - ".github/workflows/decomp-tests.yml"
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run decomp helper tests
+        run: python -m unittest discover -s decomp/scripts/tests -p "test_*.py" -v
