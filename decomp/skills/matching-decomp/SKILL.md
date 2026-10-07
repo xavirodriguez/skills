@@ -9,6 +9,21 @@ The goal is not merely to understand a function. The goal is to reproduce the ta
 
 **Success criterion:** the project's authoritative comparison reports an exact match.
 
+## 0. Environment and shell preflight
+
+Before any helper or build command:
+- identify OS and active shell;
+- identify a usable Python interpreter;
+- identify Ghidra headless, Ninja/Make and objdiff when applicable;
+- run `decomp/scripts/preflight.py` when Python is available;
+- on Windows without Python, run `decomp/scripts/preflight.ps1` first.
+
+Never assume `python3` on Windows.
+
+Shell commands must match the active shell. In PowerShell never emit Bash-only syntax such as `&&`, `||`, `<<` heredocs, `source`, or `mkdir -p`. Do not use inline Python for project inspection when one of the repository helpers can perform the task. Use separate commands rather than chaining.
+
+If preflight reports a blocker, stop and report the blocker. Do not improvise another shell or language to bypass it.
+
 ## 1. Inspect before editing
 
 Identify:
