@@ -58,11 +58,9 @@ Locate the local clone of:
 
 Run:
 
-    <python> <skills>/decomp/scripts/analyze_reference_project.py <ph-reference> --xmap <target>/.decomp-agent/xmap-analysis.json -o <target>/.decomp-agent/reference/ph-analysis.json
+    <python> <skills>/decomp/scripts/analyze_reference_project.py <ph-reference> --xmap <target>/.decomp-agent/xmap-analysis.json --objdiff <ph-reference>/objdiff.json -o <target>/.decomp-agent/reference/ph-analysis.json
 
-When the reference project has a local objdiff.json, also pass:
-
-    --objdiff <ph-reference>/objdiff.json
+If <ph-reference>/objdiff.json does not exist, omit the --objdiff argument.
 
 Then:
 
