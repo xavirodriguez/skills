@@ -49,17 +49,17 @@ class ReferenceDecompilerTests(unittest.TestCase):
                 if item["address"] is not None
             }
 
-            self.assertEqual(by_address["0x00001000"]["status"], "unmarked")
+            self.assertEqual(by_address["0x02001000"]["status"], "unmarked")
             self.assertEqual(
                 by_address["0x00001000"]["recommended_action"],
                 "skip_by_default",
             )
             self.assertEqual(
-                by_address["0x00001020"]["status"],
+                by_address["0x02001020"]["status"],
                 "known_nonmatching",
             )
             self.assertEqual(
-                by_address["0x00001030"]["status"],
+                by_address["0x02001030"]["status"],
                 "known_nonmatching_equivalent",
             )
             self.assertEqual(
@@ -67,7 +67,7 @@ class ReferenceDecompilerTests(unittest.TestCase):
                 "reuse_reference_fix_codegen",
             )
             self.assertEqual(
-                by_address["0x00001040"]["status_reason"],
+                by_address["0x02001040"]["status_reason"],
                 "regalloc",
             )
 
