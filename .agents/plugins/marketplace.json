@@ -1,0 +1,20 @@
+{
+  "name": "xavi-skills",
+  "interface": {
+    "displayName": "Xavi Skills"
+  },
+  "plugins": [
+    {
+      "name": "decomp",
+      "source": {
+        "source": "local",
+        "path": "./decomp"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

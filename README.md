@@ -2,6 +2,25 @@
 
 Skills para mis agentes (OpenCode / Codex / Grok).
 
+## Codex plugin
+
+Este repositorio incluye un marketplace de Codex que publica `decomp` como plugin.
+
+### Instalación
+
+```powershell
+codex plugin marketplace add xavirodriguez/skills
+codex plugin add decomp@xavi-skills
+```
+
+También puedes fijar una rama concreta durante el desarrollo:
+
+```powershell
+codex plugin marketplace add xavirodriguez/skills --ref <branch>
+```
+
+Después de instalar o actualizar un plugin, inicia un hilo nuevo de Codex para cargar la versión actualizada.
+
 ## matching-decomp
 
 Skill para **matching decompilation** de juegos y software legacy: Ghidra/PyGhidra + evidencia estructurada + hipótesis de código fuente + build/compare reproducible.
@@ -16,19 +35,24 @@ inspect -> scout -> analyze -> propose -> dry-run -> apply one change
 ### Herramientas
 
 - `decomp/skills/matching-decomp/SKILL.md` — skill principal.
+- `decomp/skills/ph-decomp/SKILL.md` — entry-point para Phantom Hourglass.
 - `decomp/system_prompt.md` — prompt para el agente.
 - `decomp/scripts/inspect_project.py` — descubre señales de build/decomp.
 - `decomp/scripts/scout_functions.py` — prioriza funciones candidatas en Ghidra.
 - `decomp/scripts/analyze_function.py` — genera evidencia JSON de una función.
 - `decomp/scripts/run_match.py` — ejecuta build/compare explícitos de forma controlada.
 - `decomp/scripts/parse_compare.py` — extrae evidencia de logs de comparación.
-- `decomp/MANUAL.md` — manual completo con workflow de Klonoa: Empire of Dreams.
+- `decomp/scripts/parse_xmap.py` — analiza linker maps/XMAP.
+- `decomp/scripts/candidate_gate.py` — filtra candidatos con evidencia de referencia.
+- `decomp/MANUAL.md` — manual completo del workflow.
 
 ### Uso mínimo
 
 ```bash
 python3 decomp/scripts/inspect_project.py /path/to/project
 ```
+
+En Windows, usa el intérprete detectado por el preflight y comandos PowerShell, no `python3` por defecto.
 
 Después de inspeccionar el proyecto, el agente debe descubrir y usar sus comandos reales de build/compare. No se asumen Ninja, Make, objdiff ni un ABI concreto.
 
@@ -41,4 +65,4 @@ Después de inspeccionar el proyecto, el agente debe descubrir y usar sus comand
 - El compare autoritativo decide el éxito.
 - Los logs y el hypothesis ledger hacen el proceso reproducible.
 
-La implementación de esta iteración está documentada en `decomp/MANUAL.md`.
+La implementación está documentada en `decomp/MANUAL.md`.
