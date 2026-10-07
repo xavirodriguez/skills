@@ -11,6 +11,8 @@ The XMAP is **build/link evidence**, not semantic proof. Its highest value comes
 
 ## Workflow
 
+Before running the Python helpers, complete environment preflight and select the interpreter it reports. On Windows never assume `python3`, and never use Bash shell syntax in PowerShell.
+
 1. Preserve the original XMAP.
 2. Inspect its actual format before assuming a vendor/toolchain.
 3. Run `decomp/scripts/parse_xmap.py` to create a machine-readable baseline.
