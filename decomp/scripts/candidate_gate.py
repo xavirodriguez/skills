@@ -10,10 +10,14 @@ from typing import Any
 
 def normalize_source(path: str) -> str:
     value = path.replace("\\", "/")
-    for marker in ("/src/", "/libs/", "src/", "libs/"):
+    for marker in ("/src/", "/libs/"):
         index = value.lower().find(marker.lower())
         if index >= 0:
-            return value[index + 1:] if value.startswith("/") else value[index:]
+            return value[index + 1:]
+    for marker in ("src/", "libs/"):
+        index = value.lower().find(marker.lower())
+        if index >= 0:
+            return value[index:]
     return value.lstrip("./")
 
 
@@ -55,7 +59,17 @@ def gate(objdiff: dict[str, Any], reference: dict[str, Any]) -> dict[str, Any]:
         ]
         unmarked = [fn for fn in refs if fn.get("status") == "unmarked"]
 
-        if refs and not nonmatching and unmarked:
+        verified = [
+            fn for fn in refs
+            if fn.get("reference_build_status") == "complete"
+        ]
+
+        if refs and len(verified) == len(refs):
+            action = "skip_verified_reference_unit"
+            confidence = "high"
+            reason = "Reference objdiff marks the corresponding unit complete."
+            blocked_units += 1
+        elif refs and not nonmatching and unmarked:
             action = "skip_unit_by_default"
             confidence = "medium"
             reason = "All reference functions found in this unit are unmarked."
