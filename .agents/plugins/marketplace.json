@@ -12,17 +12,9 @@
       },
       "policy": {
         "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL",
-        "products": [
-          "CODEX"
-        ]
+        "authentication": "ON_INSTALL"
       },
-      "category": "Developer Tools",
-      "interface": {
-        "displayName": "Matching Decomp",
-        "shortDescription": "Reverse-engineer legacy software with reproducible build and compare workflows.",
-        "longDescription": "Matching decompilation workflows for Ghidra, XMAP evidence, reference-project analysis, and authoritative build/compare loops, including a Phantom Hourglass workflow hardened for Windows and PowerShell."
-      }
+      "category": "Developer Tools"
     }
   ]
 }
