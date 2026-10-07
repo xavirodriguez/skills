@@ -137,17 +137,18 @@ def correlate(
             },
         })
 
+    unmatched_ghidra_functions = []
     for function in functions:
         address = address_value(function)
-        if address is None or address in matched_ghidra_addresses:
+        if address is None:
             continue
-        unmatched_xmap_names = {
-            item.get("name")
-            for item in xmap_symbols
-            if address_value(item) == address - address_offset
-        }
-        if unmatched_xmap_names:
-            continue
+        if address not in matched_ghidra_addresses:
+            unmatched_ghidra_functions.append({
+                "name": function.get("name"),
+                "address": function.get("entry"),
+                "reason": "no_xmap_symbol_at_address",
+            })
+
 
     return {
         "format": "xmap-ghidra-correlation-v1",
@@ -166,6 +167,7 @@ def correlate(
         },
         "correlations": correlations,
         "unmatched_xmap": unmatched_xmap,
+        "unmatched_ghidra_functions": unmatched_ghidra_functions,
         "conflicts": conflicts,
         "policy": {
             "address_mapping": "exact_after_explicit_offset",
