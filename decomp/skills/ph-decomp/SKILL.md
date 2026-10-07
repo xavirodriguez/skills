@@ -35,6 +35,10 @@ Run:
 
     <python> <skills>/decomp/scripts/inspect_project.py <target> > <target>/.decomp-agent/project.json
 
+If an ARM9 XMAP exists, parse it now, before the reference gate:
+
+    <python> <skills>/decomp/scripts/parse_xmap.py <xmap> -o <target>/.decomp-agent/xmap-analysis.json
+
 For PH, identify:
 - EUR or USA version;
 - compiler and flags;
@@ -55,6 +59,10 @@ Locate the local clone of:
 Run:
 
     <python> <skills>/decomp/scripts/analyze_reference_project.py <ph-reference> --xmap <target>/.decomp-agent/xmap-analysis.json -o <target>/.decomp-agent/reference/ph-analysis.json
+
+When the reference project has a local objdiff.json, also pass:
+
+    --objdiff <ph-reference>/objdiff.json
 
 Then:
 
