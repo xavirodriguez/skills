@@ -52,6 +52,29 @@ class CandidateGateTests(unittest.TestCase):
         )
         self.assertEqual(result["reference_blocked_units"], 0)
 
+    def test_complete_reference_build_is_strongest_gate(self) -> None:
+        objdiff = {
+            "units": [{
+                "name": "TouchControl",
+                "target_path": "src/Main/Player/TouchControl.cpp",
+                "metadata": {"complete": False},
+            }]
+        }
+        reference = {
+            "functions": [{
+                "name": "func_02001000",
+                "source_file": "D:/ref/ph/src/Main/Player/TouchControl.cpp",
+                "status": "unmarked",
+                "reference_build_status": "complete",
+            }]
+        }
+        result = gate(objdiff, reference)
+        self.assertEqual(
+            result["candidates"][0]["action"],
+            "skip_verified_reference_unit",
+        )
+        self.assertEqual(result["candidates"][0]["reference_functions"][0]["reference_build_status"], "complete")
+
 
 if __name__ == "__main__":
     unittest.main()
