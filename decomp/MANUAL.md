@@ -183,3 +183,18 @@ Because this project uses legacy GBA compilers and multiple compiler configurati
 - Do not guess build commands.
 - Do not let the agent rewrite unrelated code.
 - Stop when the authoritative compare passes or when the environment is blocked.
+
+
+## 12. XMAP-assisted analysis
+
+When a linker map such as `arm9.o.xMAP` is available, parse it before choosing deep reverse-engineering targets:
+
+    python3 /path/to/skills/decomp/scripts/parse_xmap.py       arm9.o.xMAP > .decomp-agent/xmap-analysis.json
+
+The parser is intentionally conservative and format-agnostic. Inspect the raw XMAP if the result has a low format confidence or many unclassified lines.
+
+Correlate XMAP symbols with the binary and Ghidra. Do not map virtual addresses directly to ROM offsets without validating the executable's load addresses and layout.
+
+Expose high-confidence XMAP names, sections and addresses to the function-analysis agent. Keep inferred sizes and semantic interpretations marked as inferred.
+
+The dedicated `decomp/skills/xmap-analysis/SKILL.md` contains the evidence policy and correlation workflow.
