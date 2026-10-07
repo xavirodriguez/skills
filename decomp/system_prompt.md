@@ -163,10 +163,15 @@ For Zelda: Phantom Hourglass, use the reference project:
 
 Run:
 
+Run:
+
     <python> /path/to/skills/decomp/scripts/analyze_reference_project.py \
       /path/to/ph \
       --xmap .decomp-agent/xmap-analysis.json \
+      --objdiff /path/to/ph/objdiff.json \
       > .decomp-agent/reference/ph-analysis.json
+
+When the reference objdiff.json does not exist, omit --objdiff.
 
 Use the reference index to avoid duplicated work:
 
