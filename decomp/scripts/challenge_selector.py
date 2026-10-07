@@ -338,7 +338,7 @@ def select(
         if (item["size"] or 0) >= min_tier1_size
         and not item["non_logic_name"]
     ]
-    tier1.sort(key=tier1_score)
+    tier1.sort(key=lambda item: (-tier1_score(item)[0], item["size"], item["name"]))
 
     tier2 = []
     if threshold is not None:
