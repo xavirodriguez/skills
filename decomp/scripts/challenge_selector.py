@@ -159,8 +159,24 @@ def find_scout(row: dict[str, Any], index: dict[str, dict[str, Any]]) -> dict[st
 
 
 def obvious_non_logic(name: str) -> tuple[bool, str | None]:
-    if NON_LOGIC_RE.search(name):
+    normalized = re.sub(r"[^A-Za-z0-9_]+", "_", name).strip("_")
+    if NON_LOGIC_RE.search(normalized):
         return True, "name strongly suggests stub/table/data/initializer code"
+
+    suffixes = (
+        "table",
+        "tables",
+        "array",
+        "arrays",
+        "vtable",
+        "initializer",
+        "initializers",
+        "data",
+    )
+    lowered = normalized.lower()
+    if any(lowered.endswith(suffix) for suffix in suffixes):
+        return True, "name strongly suggests table/array/initializer/data code"
+
     return False, None
 
 
@@ -309,7 +325,7 @@ def tier3_score(candidate: dict[str, Any]) -> tuple[float, int, str]:
 
 def select(
     report: dict[str, Any],
-    scout: dict[str, Any] | None,
+    scout: dict[str, Any] | None = None,
     *,
     min_tier1_size: int = 8,
     min_tier2_size: int = 256,
