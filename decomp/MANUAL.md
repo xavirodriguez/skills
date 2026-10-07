@@ -198,3 +198,53 @@ Correlate XMAP symbols with the binary and Ghidra. Do not map virtual addresses 
 Expose high-confidence XMAP names, sections and addresses to the function-analysis agent. Keep inferred sizes and semantic interpretations marked as inferred.
 
 The dedicated `decomp/skills/xmap-analysis/SKILL.md` contains the evidence policy and correlation workflow.
+
+
+## 13. XMAP ↔ Ghidra integration
+
+Ghidra projects should be read through Ghidra's supported API. Do **not** parse internal `Zelda.rep/**/*.grf`, `*.gbf` or similar database files directly.
+
+Export program-level evidence from the Ghidra project:
+
+    analyzeHeadless D:\xavi\ghidra_zelda Zelda \
+      -process Zelda \
+      -scriptPath /path/to/skills/decomp/scripts \
+      -postScript export_ghidra_program.py > .decomp-agent/ghidra-program.json
+
+On Windows, use the equivalent path to Ghidra's `analyzeHeadless.bat`.
+
+The export is read-only and contains:
+
+- program/language/compiler metadata;
+- image base and address-space information;
+- function names and entry/body addresses;
+- function signatures/calling conventions;
+- symbol table entries;
+- memory block boundaries and permissions.
+
+Then correlate it with the parsed XMAP:
+
+    python3 /path/to/skills/decomp/scripts/correlate_xmap.py \
+      .decomp-agent/xmap-analysis.json \
+      .decomp-agent/ghidra-program.json \
+      > .decomp-agent/xmap-ghidra.json
+
+A useful result looks conceptually like:
+
+    XMAP: Player_Update @ 0x02012340
+              |
+              | exact address
+              v
+    Ghidra: FUN_02012340 @ 0x02012340
+              |
+              +-- analyze_function.py
+                    -> assembly
+                    -> P-code
+                    -> CFG
+                    -> Xrefs
+                    -> callers/callees
+                    -> data/memory evidence
+
+The correlator reports unmatched XMAP symbols and unmatched Ghidra functions so the agent can distinguish missing analysis from an actual address mismatch.
+
+Do not pass an address offset unless it has been independently validated from the binary/load layout. A larger match count is not evidence that an offset is correct.
