@@ -74,13 +74,9 @@ The candidate gate is a hard selection filter:
 
 Do not equate an incomplete objdiff unit with every function in that unit being unmatched.
 
-## 4. XMAP gate
+## 4. XMAP/Ghidra correlation
 
-When \`arm9.o.xMAP\` exists, parse it before selecting a deep target:
-
-    <python> <skills>/decomp/scripts/parse_xmap.py <xmap> -o <target>/.decomp-agent/xmap-analysis.json
-
-If a Ghidra project is available, use Ghidra's supported headless API:
+The XMAP was parsed in step 2. If a Ghidra project is available, use Ghidra's supported headless API:
 
     analyzeHeadless.bat <project-dir> <project-name> -process <program> -scriptPath <skills>/decomp/scripts -postScript export_ghidra_program.py
 
