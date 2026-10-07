@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -28,9 +27,10 @@ def build_process_args(command: str, shell: str) -> list[str]:
 
 
 def detect_shell() -> str:
-    if os.name != "nt":
-        return "bash"
-    return "pwsh" if shutil.which("pwsh") else "powershell"
+    configured = os.environ.get("DECOMP_SHELL")
+    if configured in {"powershell", "pwsh", "bash", "cmd"}:
+        return configured
+    return "powershell" if os.name == "nt" else "bash"
 
 
 def run(command: str, cwd: Path, shell: str) -> tuple[int, str]:
