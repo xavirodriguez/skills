@@ -69,7 +69,7 @@ class ChallengeSelectorTests(unittest.TestCase):
             "version": 2,
             "units": [
                 {"name": "table", "functions": [{"name": "EnemyTable", "size": 1024, "address": "0x3000", "fuzzy_match_percent": 0}]},
-                {"name": "logic", "functions": [{"name": "UpdateEnemy", "size": 600, "address": "0x4000", "fuzzy_match_percent": 0}]},
+                {"name": "logic", "functions": [{"name": "UpdateEnemy", "size": 1200, "address": "0x4000", "fuzzy_match_percent": 0}]},
             ],
         }
         scout = {
