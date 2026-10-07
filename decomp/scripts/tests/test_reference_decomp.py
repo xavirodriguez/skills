@@ -51,7 +51,7 @@ class ReferenceDecompilerTests(unittest.TestCase):
 
             self.assertEqual(by_address["0x02001000"]["status"], "unmarked")
             self.assertEqual(
-                by_address["0x00001000"]["recommended_action"],
+                by_address["0x02001000"]["recommended_action"],
                 "skip_by_default",
             )
             self.assertEqual(
@@ -63,7 +63,7 @@ class ReferenceDecompilerTests(unittest.TestCase):
                 "known_nonmatching_equivalent",
             )
             self.assertEqual(
-                by_address["0x00001030"]["recommended_action"],
+                by_address["0x02001030"]["recommended_action"],
                 "reuse_reference_fix_codegen",
             )
             self.assertEqual(
