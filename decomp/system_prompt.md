@@ -85,3 +85,19 @@ Before a destructive or expensive run, use run_match.py --dry-run.
 ## Project status versus match proof
 
 Directories such as asm/nonmatchings are useful project annotations, but they are not proof by themselves. The authoritative project comparison remains the only completion criterion.
+
+
+## XMAP evidence
+
+When the project provides an XMAP/linker map, analyze it before deep function reconstruction.
+
+Use decomp/scripts/parse_xmap.py to create a conservative JSON baseline. Treat XMAP data as linker/build evidence and correlate it with the actual binary and Ghidra. Never assume a virtual address is a ROM offset.
+
+When XMAP symbols exist, prefer this evidence chain:
+
+    XMAP symbol -> virtual address -> binary offset -> Ghidra symbol/function -> assembly/P-code
+
+Use original symbol names to improve context, but do not infer semantic responsibilities solely from names. Distinguish explicit symbol sizes from sizes inferred from neighbouring symbols.
+
+Preserve unclassified XMAP lines. If the generic parser cannot confidently interpret the format, inspect a real sample and add a format-specific parser rather than silently guessing.
+
