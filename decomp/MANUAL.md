@@ -4,9 +4,9 @@ This guide explains how to use the matching-decomp skill with a real decomp.dev 
 
 ## What this version does
 
-## Production workflow
+For autonomous Phantom Hourglass runs, use `ph-decomp` as the entry point. It performs a mandatory environment preflight, reference-project gate, XMAP gate, candidate gate, then delegates to `matching-decomp`.
 
-For autonomous runs, use `ph-decomp` for Phantom Hourglass. It performs a mandatory environment preflight, reference-project gate, XMAP gate, candidate gate, then delegates to `matching-decomp`.
+## Production workflow
 
 ### Windows command rules
 
