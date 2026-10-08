@@ -101,7 +101,7 @@ For **SELECT/CHALLENGE**, run the full correlation gate. For **TARGET_MATCH** or
 
 The XMAP was parsed in step 2. If a Ghidra project is available, use Ghidra's supported headless API:
 
-    analyzeHeadless.bat <project-dir> <project-name> -process <program> -scriptPath <skills>/decomp/scripts -postScript export_ghidra_program.py
+    analyzeHeadless.bat <project-dir> <project-name> -process <program> -scriptPath ../../scripts -postScript export_ghidra_program.py
 
 Then:
 
