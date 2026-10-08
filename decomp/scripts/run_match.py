@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Safe orchestration harness for matching-decomp experiments.
+"""Controlled build/compare harness with a machine-readable experiment ledger."""
 
-It never guesses project commands and never edits source. The LLM agent remains
-responsible for interpreting Ghidra evidence and proposing source changes.
-Commands run through an explicit shell so Windows PowerShell does not silently
-fall back to cmd.exe while the outer agent uses PowerShell syntax.
-"""
 from __future__ import annotations
+
 import argparse
 import json
 import os
 import subprocess
 import time
 from pathlib import Path
+
+from parse_compare import parse_compare
+
 
 def build_process_args(command: str, shell: str) -> list[str]:
     if shell == "powershell":
@@ -49,9 +48,17 @@ def run(command: str, cwd: Path, shell: str) -> tuple[int, str]:
         f"[exit={process.returncode}, seconds={elapsed}]\n"
     )
 
+
 def append_jsonl(path: Path, value: dict) -> None:
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(value, sort_keys=True) + "\n")
+
+
+def run_compare(command: str, root: Path, shell: str, path: Path) -> tuple[int, str, dict]:
+    code, log = run(command, root, shell)
+    path.write_text(log, encoding="utf-8")
+    return code, log, parse_compare(log)
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -61,8 +68,17 @@ def main() -> int:
     parser.add_argument("--compare-command")
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--force", action="store_true")
     parser.add_argument("--shell", choices=("auto", "powershell", "pwsh", "bash", "cmd"), default="auto")
-    parser.add_argument("--force", action="store_true", help="Allow command execution.")
+    parser.add_argument("--hypothesis", default="")
+    parser.add_argument("--source-change", default="")
+    parser.add_argument("--compare-before", action="store_true")
+    parser.add_argument("--compare-on-build-failure", action="store_true")
+    parser.add_argument(
+        "--allow-build-failure-if-compare-passes",
+        action="store_true",
+        help="Return success when build exits non-zero but the authoritative compare passes.",
+    )
     args = parser.parse_args()
 
     if args.iterations < 1:
@@ -71,11 +87,19 @@ def main() -> int:
         parser.error("--dry-run and --force are mutually exclusive")
 
     shell = detect_shell() if args.shell == "auto" else args.shell
-
     root = Path(args.project).resolve()
     state = root / ".decomp-agent"
     target_state = state / "targets" / args.target.replace("/", "_")
     target_state.mkdir(parents=True, exist_ok=True)
+
+    if not args.build_command or not args.compare_command:
+        print(json.dumps({
+            "status": "plan-only",
+            "message": "Supply explicit authoritative build and compare commands.",
+            "target": args.target,
+            "state": str(state),
+        }, indent=2))
+        return 0
 
     config = {
         "project": str(root),
@@ -84,30 +108,20 @@ def main() -> int:
         "compare_command": args.compare_command,
         "shell": shell,
         "iterations": args.iterations,
-        "dry_run": args.dry_run,
+        "hypothesis": args.hypothesis,
+        "source_change": args.source_change,
+        "compare_before": args.compare_before,
+        "compare_on_build_failure": args.compare_on_build_failure,
+        "allow_build_failure_if_compare_passes": args.allow_build_failure_if_compare_passes,
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    (state / "run.json").write_text(json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-    if not args.build_command or not args.compare_command:
-        print(json.dumps({
-            "status": "plan-only",
-            "message": "Supply the project's authoritative build and compare commands; commands are never guessed.",
-            "target": args.target,
-            "state": str(state),
-        }, indent=2))
-        return 0
+    (state / "run.json").write_text(
+        json.dumps(config, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
     if args.dry_run:
-        print(json.dumps({
-            "status": "dry-run",
-            "target": args.target,
-            "build_command": args.build_command,
-            "compare_command": args.compare_command,
-            "shell": shell,
-            "iterations": args.iterations,
-            "message": "No command executed and no source modified.",
-        }, indent=2))
+        print(json.dumps({"status": "dry-run", **config}, indent=2, sort_keys=True))
         return 0
 
     if not args.force:
@@ -115,22 +129,80 @@ def main() -> int:
         return 2
 
     ledger = state / "hypotheses.jsonl"
+
     for iteration in range(1, args.iterations + 1):
+        before = {}
+        if args.compare_before:
+            before_code, _, before = run_compare(
+                args.compare_command,
+                root,
+                shell,
+                target_state / f"iteration-{iteration:03d}-compare-before.log",
+            )
+            before["exit_code"] = before_code
+
         build_code, build_log = run(args.build_command, root, shell)
-        (target_state / f"iteration-{iteration:03d}-build.log").write_text(build_log, encoding="utf-8")
-        compare_code, compare_log = (0, "")
-        if build_code == 0:
-            compare_code, compare_log = run(args.compare_command, root, shell)
-            (target_state / f"iteration-{iteration:03d}-compare.log").write_text(compare_log, encoding="utf-8")
+        (target_state / f"iteration-{iteration:03d}-build.log").write_text(
+            build_log,
+            encoding="utf-8",
+        )
+
+        after = {}
+        compare_code = None
+        if build_code == 0 or args.compare_on_build_failure:
+            compare_code, _, after = run_compare(
+                args.compare_command,
+                root,
+                shell,
+                target_state / f"iteration-{iteration:03d}-compare.log",
+            )
+
+        decision = "build-failed"
+        if compare_code is not None and compare_code == 0:
+            if after.get("exact_match"):
+                if build_code == 0:
+                    decision = "exact-match"
+                elif args.allow_build_failure_if_compare_passes:
+                    decision = "exact-match-build-failed-allowed"
+                else:
+                    decision = "exact-match-build-failed"
+            else:
+                decision = "compare-ran"
+        elif build_code == 0 and compare_code not in (None, 0):
+            decision = "compare-failed"
 
         append_jsonl(ledger, {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "iteration": iteration,
             "target": args.target,
+            "hypothesis": args.hypothesis,
+            "source_change": args.source_change,
             "build_exit": build_code,
             "compare_exit": compare_code,
-            "decision": "build-failed" if build_code else ("compare-failed" if compare_code else "compare-ran"),
+            "match_before": before.get("match_percent"),
+            "match_after": after.get("match_percent"),
+            "first_mismatch_before": before.get("first_mismatch"),
+            "first_mismatch_after": after.get("first_mismatch"),
+            "exact_match_after": after.get("exact_match"),
+            "decision": decision,
         })
-        if build_code != 0 or compare_code != 0:
+
+        if build_code != 0:
+            if (
+                args.allow_build_failure_if_compare_passes
+                and compare_code == 0
+                and after.get("exact_match")
+            ):
+                continue
+            if not args.compare_on_build_failure:
+                return 1
+            if compare_code != 0:
+                return 1
+            # Compare ran but the build did not complete and the result did not
+            # satisfy the explicit allow policy.
+            return 1
+
+        if compare_code != 0:
             return 1
 
     print(json.dumps({
@@ -138,9 +210,9 @@ def main() -> int:
         "target": args.target,
         "iterations": args.iterations,
         "state": str(state),
-        "message": "Build/compare orchestration completed. The harness does not interpret semantics or edit source.",
-    }, indent=2))
+    }, indent=2, sort_keys=True))
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
