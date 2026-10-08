@@ -54,6 +54,9 @@ def validate_skill(path: Path, skills_root: Path) -> list[str]:
     if "<skills>/decomp/scripts" in content:
         errors.append(f"{path}: host-specific <skills> helper path remains")
 
+    if "decomp/scripts/" in content:
+        errors.append(f"{path}: repository-root helper path remains; use ../../scripts/")
+
     if "/path/to/skills/decomp/scripts" in content:
         errors.append(f"{path}: example-only absolute helper path remains")
 
