@@ -153,6 +153,16 @@ The next candidate may only come from:
     challenge_batch.py next --session ... --claim
 
 and only after the current target has reached the terminal matched state.
+### Tier 2 selection contract
+
+Selection must be derived from the current authoritative report and current Ghidra/XMAP evidence.
+
+- Existing selection artifacts are cacheable context only, never the source of truth.
+- Before reusing an artifact, validate its provenance with `validate_selection.py`.
+- If provenance is missing or stale, regenerate from the current authoritative inputs, unless the user explicitly forbids writes; in that case rank directly from the authoritative inputs without claiming the old artifact is current.
+- Missing match data is `unknown`; it must not be converted to `0%` and must not satisfy the zero-match Tier 2 gate.
+- A failed read of a plugin-cache skill file is not a project/infrastructure blocker. Do not scan arbitrary cache or drive locations to replace it.
+- Selection does not claim that a candidate is executable or matchable. It only produces an ordered evidence-backed ranking.
 ## Candidate ranking
 
 The selector exposes `expected_value_score` in addition to `success_score`, `game_logic_score` and `complexity_score`.
