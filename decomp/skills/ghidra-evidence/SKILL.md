@@ -8,15 +8,25 @@ compatibility: OpenCode and Codex
 
 Use this skill to extract evidence from a reverse-engineered program. It does not decide match status and does not edit the Ghidra database.
 
-Prefer the repository's headless helpers when available:
+## Launcher selection
 
-    analyzeHeadless ... -postScript export_ghidra_program.py
+First detect the available launchers:
+
+    <python> ../../scripts/ghidra_launcher.py detect --ghidra-home <Ghidra>
+
+Then classify the collector:
+
+    <python> ../../scripts/ghidra_launcher.py script-runtime --script <collector.py>
+
+Repository scripts that use Ghidra's native GhidraScript/headless API should run through analyzeHeadless. A collector that explicitly uses PyGhidra should run through pyghidraRun.bat -H (Windows) or pyghidraRun -H (Linux/macOS). Ghidra documents PyGhidra as a separate Python launch mode and provides pyghidraRun.bat for Windows.
+
+Do not assume every .py collector needs PyGhidra. The current repository collectors are headless Ghidra scripts and should continue to use analyzeHeadless unless they are explicitly migrated to PyGhidra.
 
 For one function:
 
     analyzeHeadless ... -postScript analyze_function.py <function-or-address>
 
-For challenge candidate discovery, use the project's dedicated scout when available, for example:
+For challenge candidate discovery:
 
     analyzeHeadless ... -postScript tier2_ghidra_scout.py .decomp-agent/challenge/report.json
 

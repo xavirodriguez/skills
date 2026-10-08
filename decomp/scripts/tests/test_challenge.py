@@ -88,6 +88,7 @@ class UnifiedChallengeTests(unittest.TestCase):
         candidate = result["tier2"]["candidates"][0]
         self.assertIn("success_score", candidate)
         self.assertIn("game_logic_score", candidate)
+        self.assertIn("expected_value_score", candidate)
         self.assertGreater(candidate["game_logic_score"], 0)
 
     def test_accessor_is_rejected(self) -> None:

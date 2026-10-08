@@ -14,6 +14,8 @@
         "powershell.exe *preflight.ps1 *",
         "analyzeHeadless *",
         "analyzeHeadless.bat *",
+        "pyghidraRun *",
+        "pyghidraRun.bat *",
         "ninja *",
         "objdiff *"
       ]
@@ -26,7 +28,8 @@
       "decomp/scripts/challenge.py",
       "decomp/scripts/challenge_autopilot.py",
       "decomp/scripts/challenge_selector.py",
-      "decomp/scripts/candidate_gate.py"
+      "decomp/scripts/candidate_gate.py",
+      "decomp/scripts/challenge_batch.py"
     ]
   }
 }
