@@ -115,6 +115,26 @@ class UnifiedChallengeTests(unittest.TestCase):
         self.assertEqual(result["tier2"]["candidates"], [])
 
 
+    def test_unavailable_match_data_is_not_counted_as_partial_or_match(self) -> None:
+        report = {
+            "version": 2,
+            "units": [{
+                "name": "u",
+                "functions": [
+                    {"name": "Unknown", "size": 128, "address": "0x5000"},
+                    {"name": "Zero", "size": 256, "address": "0x5100", "fuzzy_match_percent": 0},
+                    {"name": "Partial", "size": 256, "address": "0x5200", "fuzzy_match_percent": 50},
+                    {"name": "Match", "size": 256, "address": "0x5300", "fuzzy_match_percent": 100},
+                ],
+            }],
+        }
+        result = evaluate(report)
+        self.assertEqual(result["summary"]["unavailable_match_data_functions"], 1)
+        self.assertEqual(result["summary"]["matched_functions"], 1)
+        self.assertEqual(result["summary"]["partial_functions"], 1)
+        self.assertEqual(result["summary"]["remaining_functions"], 2)
+        self.assertEqual(result["summary"]["undecompiled_functions"], 1)
+
     def test_compact_summary_keeps_only_top_candidates(self) -> None:
         result = {
             "format": "decomp-challenge-v2",
