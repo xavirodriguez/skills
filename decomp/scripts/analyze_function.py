@@ -10,6 +10,7 @@
 import json
 import sys
 
+from ghidra.app.decompiler import DecompInterface
 from ghidra.program.model.block import BasicBlockModel
 
 
@@ -64,6 +65,24 @@ def collect_signature(function):
             for p in function.getParameters()
         ],
     }
+
+
+def collect_decompile(program, function):
+    interface = DecompInterface()
+    try:
+        interface.openProgram(program)
+        result = interface.decompileFunction(function, 60, monitor)
+        if not result.decompileCompleted():
+            return None
+        decompiled = result.getDecompiledFunction()
+        return decompiled.getC() if decompiled is not None else None
+    except Exception:
+        return None
+    finally:
+        try:
+            interface.dispose()
+        except Exception:
+            pass
 
 
 def collect_instructions(program, function):
@@ -226,6 +245,7 @@ def main():
         "cfg": collect_cfg(currentProgram, function),
         "relationships": collect_relationships(currentProgram, function),
         "memory": collect_memory(currentProgram, function),
+        "decompile_c": collect_decompile(currentProgram, function),
     }
 
     if correlation_path:
