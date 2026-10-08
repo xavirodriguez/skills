@@ -1,123 +1,100 @@
 #!/usr/bin/env python3
-"""Gate incomplete objdiff work against a reference decompilation index."""
+"""Correlate target functions with reference-decompilation evidence.
+
+The gate is deliberately function-level. An incomplete translation unit does
+not block every function in that unit.
+"""
+
 from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
-
-def normalize_source(path: str) -> str:
-    value = path.replace("\\", "/")
-    for marker in ("/src/", "/libs/"):
-        index = value.lower().find(marker.lower())
-        if index >= 0:
-            return value[index + 1:]
-    for marker in ("src/", "libs/"):
-        index = value.lower().find(marker.lower())
-        if index >= 0:
-            return value[index:]
-    return value.lstrip("./")
+from challenge import function_rows
 
 
 def load(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def unit_incomplete(unit: dict[str, Any]) -> bool:
-    return not bool(unit.get("metadata", {}).get("complete"))
+def key(value: Any) -> str:
+    return str(value).strip().lower() if value is not None else ""
 
 
-def functions_for_unit(functions: list[dict[str, Any]], target_path: str) -> list[dict[str, Any]]:
-    normalized = normalize_source(target_path)
-    return [
-        fn for fn in functions
-        if normalize_source(str(fn.get("source_file", ""))) == normalized
-    ]
+def ref_index(reference: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for fn in reference.get("functions", []):
+        if not isinstance(fn, dict):
+            continue
+        for value in (fn.get("name"), fn.get("address")):
+            if value is not None:
+                result[key(value)] = fn
+    return result
 
 
 def gate(objdiff: dict[str, Any], reference: dict[str, Any]) -> dict[str, Any]:
-    functions = reference.get("functions", [])
-    candidates: list[dict[str, Any]] = []
-    blocked_units = 0
-
-    for unit in objdiff.get("units", []):
-        target_path = str(unit.get("target_path", unit.get("name", "")))
-        if not unit_incomplete(unit):
+    index = ref_index(reference)
+    functions = []
+    for row in function_rows(objdiff):
+        if row["match_percent"] >= 100.0:
             continue
 
-        refs = functions_for_unit(functions, target_path)
-        status_counts: dict[str, int] = {}
-        for fn in refs:
-            status = str(fn.get("status", "unknown"))
-            status_counts[status] = status_counts.get(status, 0) + 1
+        ref = index.get(key(row["name"])) or index.get(key(row["address"]))
+        status = ref.get("status") if ref else None
 
-        nonmatching = [
-            fn for fn in refs
-            if fn.get("status") in {"known_nonmatching", "known_nonmatching_equivalent"}
-        ]
-        unmarked = [fn for fn in refs if fn.get("status") == "unmarked"]
-
-        verified = [
-            fn for fn in refs
-            if fn.get("reference_build_status") == "complete"
-        ]
-
-        if refs and len(verified) == len(refs):
-            action = "skip_verified_reference_unit"
+        if status == "known_nonmatching_equivalent":
+            action = "reuse_reference_codegen"
             confidence = "high"
-            reason = "Reference objdiff marks the corresponding unit complete."
-            blocked_units += 1
-        elif refs and not nonmatching and unmarked:
-            action = "skip_unit_by_default"
+        elif status == "known_nonmatching":
+            action = "reuse_reference_and_match"
+            confidence = "high"
+        elif status == "unmarked" and ref and ref.get("reference_build_status") == "complete":
+            action = "reuse_verified_reference"
+            confidence = "high"
+        elif status == "unmarked":
+            action = "reuse_reference_apparently_matching"
             confidence = "medium"
-            reason = "All reference functions found in this unit are unmarked."
-            blocked_units += 1
-        elif nonmatching:
-            action = "inspect_reference_nonmatching"
-            confidence = "high"
-            reason = "Reference contains explicitly non-matching functions."
-        elif refs:
-            action = "inspect_reference"
-            confidence = "low"
-            reason = "Reference evidence exists but is not enough to classify the unit."
         else:
-            action = "target_analysis_allowed"
+            action = "new_target_analysis"
             confidence = "low"
-            reason = "No reference function was correlated to this unit."
 
-        candidates.append({
-            "name": unit.get("name"),
-            "target_path": target_path,
-            "metadata_complete": unit.get("metadata", {}).get("complete"),
-            "reference_function_count": len(refs),
-            "reference_status_counts": status_counts,
-            "reference_functions": [
-                {
-                    "name": fn.get("name"),
-                    "address": fn.get("address"),
-                    "status": fn.get("status"),
-                    "recommended_action": fn.get("recommended_action"),
-                    "reference_build_status": fn.get("reference_build_status"),
-                }
-                for fn in refs
-            ],
+        functions.append({
+            **row,
+            "reference": {
+                "name": ref.get("name") if ref else None,
+                "address": ref.get("address") if ref else None,
+                "source_file": ref.get("source_file") if ref else None,
+                "line": ref.get("line") if ref else None,
+                "status": status,
+                "reference_build_status": ref.get("reference_build_status") if ref else None,
+                "recommended_action": ref.get("recommended_action") if ref else None,
+            },
             "action": action,
             "confidence": confidence,
-            "reason": reason,
         })
 
     return {
-        "format": "decomp-candidate-gate-v1",
-        "incomplete_units": len(candidates),
-        "reference_blocked_units": blocked_units,
-        "candidates": candidates,
+        "format": "decomp-candidate-gate-v2",
+        "functions": functions,
+        "summary": {
+            "target_incomplete_functions": len(functions),
+            "reference_matches": sum(1 for item in functions if item["reference"]["name"]),
+            "reuse_reference": sum(
+                1 for item in functions
+                if item["action"].startswith("reuse_reference")
+            ),
+            "new_target_analysis": sum(
+                1 for item in functions if item["action"] == "new_target_analysis"
+            ),
+        },
         "policy": {
-            "do_not_redecompile_reference_unmarked_by_default": True,
-            "nonmatching_reference_is_reusable_prior_work": True,
-            "objdiff_unit_incomplete_is_not_function_match_proof": True,
-            "target_authoritative_compare_overrides_reference": True,
+            "unit_incompleteness_does_not_block_function": True,
+            "function_level_reference_correlation": True,
+            "reference_is_context_not_authority": True,
+            "target_objdiff_is_authoritative": True,
         },
     }
 
@@ -135,6 +112,7 @@ def main() -> int:
         args.output.write_text(rendered + "\n", encoding="utf-8")
     else:
         print(rendered)
+    return 0
 
 
 if __name__ == "__main__":
