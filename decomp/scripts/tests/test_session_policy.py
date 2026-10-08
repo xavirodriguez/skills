@@ -28,6 +28,7 @@ class SessionPolicyTests(unittest.TestCase):
                     "permissions": {
                         "read": True,
                         "build": False,
+                        "analyze": False,
                     },
                 }),
                 encoding="utf-8",
