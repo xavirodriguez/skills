@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from prepare_candidate import safe_name
+from prepare_candidate import make_prompt, safe_name
 
 
 class PrepareCandidateTests(unittest.TestCase):
@@ -31,6 +31,29 @@ class PrepareCandidateTests(unittest.TestCase):
             path = Path(tmp) / "candidate.json"
             path.write_text(json.dumps(candidate), encoding="utf-8")
             self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["name"], "UpdateEnemy")
+
+
+    def test_prompt_includes_prior_lesson_without_full_ledger(self) -> None:
+        prompt = make_prompt(
+            {
+                "name": "UpdateEnemy",
+                "address": "0x1000",
+                "size": 1024,
+                "match_percent": 0,
+                "scout": {},
+                "reference": {},
+            },
+            [
+                {
+                    "target": "InitEnemy",
+                    "hypothesis": "Use uint16 for counter",
+                    "lesson": "Match improved by +6.00 percentage points.",
+                }
+            ],
+        )
+        self.assertIn("Prior lessons from previous functions:", prompt)
+        self.assertIn("Use uint16 for counter", prompt)
+        self.assertNotIn('"source_change"', prompt)
 
 
 if __name__ == "__main__":
