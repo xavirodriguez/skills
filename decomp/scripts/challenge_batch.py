@@ -298,6 +298,7 @@ def refresh_report(
     reference_path: Path | None,
     project: Path,
     shell: str,
+    timeout: float = 1800,
 ) -> tuple[int, dict[str, Any]]:
     from run_match import build_process_args
 
@@ -316,7 +317,29 @@ def refresh_report(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             check=False,
+            timeout=timeout,
         )
+    except subprocess.TimeoutExpired as exc:
+        elapsed = round(time.perf_counter() - started, 3)
+        output = exc.stdout if isinstance(exc.stdout, str) else ""
+        log_path.write_text(
+            f"$ [{shell}] {refresh_command}\n\n{output}\n\n"
+            f"[timeout={timeout}, exit=124, seconds={elapsed}]\n",
+            encoding="utf-8",
+        )
+        session["halted"] = True
+        session["stop_reason"] = "report-refresh-timeout"
+        session["last_refresh"] = {
+            "command": refresh_command,
+            "report": str(report_path),
+            "log": str(log_path.relative_to(project)),
+            "exit_code": 124,
+            "elapsed_seconds": elapsed,
+            "timed_out": True,
+            "timestamp": now_utc(),
+        }
+        save_session(session_path, session)
+        return 124, session
     except OSError as exc:
         session["halted"] = True
         session["stop_reason"] = f"refresh-command-error: {exc}"
@@ -335,6 +358,7 @@ def refresh_report(
         "log": str(log_path.relative_to(project)),
         "exit_code": process.returncode,
         "elapsed_seconds": elapsed,
+        "timed_out": False,
         "timestamp": now_utc(),
     }
 
@@ -548,6 +572,7 @@ def main() -> int:
                 reference_path=args.reference,
                 project=args.project,
                 shell=args.shell,
+                timeout=args.refresh_timeout,
             )
             print(json.dumps({
                 "candidate": candidate,
