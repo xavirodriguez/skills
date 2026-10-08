@@ -5,6 +5,55 @@ description: Analyze legacy game binaries with Ghidra/PyGhidra and iteratively r
 
 # Matching Decompilation
 
+## Task routing and session controls
+
+Classify the request before executing tools. Use the least expensive mode that can satisfy the request.
+
+- **EXPLAIN** — explain code, assembly, structs, vtables, compiler behavior or hypotheses. Read only what is needed. Do not edit, build or compare.
+- **INSPECT** — inspect a named file, symbol or local project area. Avoid global discovery and heavy pipeline gates.
+- **ANALYZE** — collect targeted Ghidra/assembly/P-code evidence for a known function or address. Run only the checks and tools required for that analysis.
+- **TARGET_MATCH** — match a concrete function supplied by the user. Establish the minimum build/compare prerequisites, then analyze, edit and compare that target. Do not run candidate selection, reference gates or global scouting unless the target cannot be resolved without them.
+- **SELECT** — find or prioritize an unknown target. Use the full project/reference/XMAP/candidate pipeline.
+- **CHALLENGE** — solve a challenge requirement such as Phantom Hourglass Tier 1/2/3. Use the challenge-specific pipeline and objective gates.
+
+A concrete target bypasses candidate selection; it does not bypass evidence needed to understand or verify that target.
+
+When the request is ambiguous, prefer the cheaper non-mutating mode and gather only enough evidence to resolve the ambiguity.
+
+### User action constraints
+
+Before every mutating, build, compare, or expensive operation, extract the explicit constraints in the current request and treat them as active session constraints.
+
+Examples:
+- "explain first" -> answer before editing/building;
+- "do not edit" -> read/analyze only;
+- "do not compile yet" -> no build/compare;
+- "only inspect X.cpp" -> stay within that scope unless an explicit dependency is required.
+
+The workflow goal never grants permission to advance to a later phase.
+
+### Action budget
+
+Track these capabilities independently:
+
+```
+READ: yes/no
+ANALYZE: yes/no
+EDIT: yes/no
+BUILD: yes/no
+COMPARE: yes/no
+SELECT: yes/no
+```
+
+Do not infer permission from the fact that the skill supports a capability.
+
+### Scope and worktree
+
+Do not create a worktree, switch branches, reset files, or discard user changes merely because the skill is active.
+
+For targeted requests, preserve the user's current worktree and modify only the requested target when editing is authorized. A dedicated branch/worktree is appropriate for autonomous multi-step selection or when the user explicitly requests isolated changes.
+
+
 The goal is not merely to understand a function. The goal is to reproduce the target machine code under the project's exact compiler, flags, linker and translation-unit conditions.
 
 **Success criterion:** the project's authoritative comparison reports an exact match.
@@ -216,6 +265,41 @@ Pay special attention to:
 - aggregate passing;
 - compiler-specific struct layout.
 
+
+## Failure classification and fast-fail policy
+
+Distinguish environment failures from experiment failures.
+
+### Infrastructure failures
+
+Examples:
+- executable/tool is missing;
+- required path or project file does not exist;
+- helper reports an infrastructure error such as `helper_unknown_error`;
+- shell invocation is invalid for the detected shell;
+- required environment state is unavailable.
+
+Policy:
+1. Do not blindly retry the same command.
+2. Do not switch shells or invent alternate command syntax.
+3. Do not write inline Python/Node/Bash to replace a repository helper.
+4. Report the exact command and error, then stop when the blocker prevents the current mode.
+
+For a missing path, verify the path only with a read-only existence check. If it is genuinely absent, stop instead of guessing a replacement path.
+
+### Experiment failures
+
+These are not automatic workflow blockers:
+- C/C++ compile errors;
+- linker errors caused by the current source hypothesis;
+- partial objdiff matches;
+- changed registers, branches or stack layout;
+- expected full-ROM/hash failure after required comparison artifacts were produced.
+
+Analyze the failure as evidence, revise one source-level hypothesis, and compare again within the user's action budget.
+
+Never treat a build error caused by the proposed source change as an environment blocker.
+
 ## 10. Failure handling
 
 When C and assembly disagree:
@@ -227,6 +311,17 @@ When C and assembly disagree:
 5. Recompile and compare.
 
 If the environment cannot build or compare, report the exact blocker. Never claim a match from semantic similarity alone.
+
+
+## Context conservation
+
+Keep complete evidence on disk; keep model context focused.
+
+- Prefer helper output files such as `-o .decomp-agent/...` for large JSON results.
+- When a helper writes a full artifact, consume its summary/stdout first and read the target-specific record only when needed.
+- Never discard evidence merely because a result contains more than ten items, and never assume the first three entries are the most relevant.
+- For long listings, filter by the active target, address, symbol, translation unit or current hypothesis before loading additional content.
+- Do not load secondary skill instructions until the workflow reaches the phase that needs them.
 
 ## Output
 
