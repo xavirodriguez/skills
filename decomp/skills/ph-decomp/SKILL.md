@@ -1,6 +1,7 @@
 ---
 name: ph-decomp
 description: Orchestrate Phantom Hourglass matching decompilation on Windows or POSIX with task-aware routing, targeted analysis and authoritative verification.
+compatibility: OpenCode and Codex
 ---
 
 # Phantom Hourglass Decompilation
@@ -31,15 +32,15 @@ For **EXPLAIN**, **INSPECT**, and targeted read-only analysis, do not run the fu
 
 Use the native Windows check when Python may be unavailable:
 
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File <skills>/decomp/scripts/preflight.ps1 <target>
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../../scripts/preflight.ps1 <target>
 
 Once Python is available:
 
-    <python> <skills>/decomp/scripts/preflight.py <target> --reference <ph-reference> --xmap <xmap>
+    <python> ../../scripts/preflight.py <target> --reference <ph-reference> --xmap <xmap>
 
 On POSIX:
 
-    <python> <skills>/decomp/scripts/preflight.py <target> --reference <ph-reference> --xmap <xmap>
+    <python> ../../scripts/preflight.py <target> --reference <ph-reference> --xmap <xmap>
 
 Do not assume `python3` on Windows. Use the interpreter reported by preflight.
 
@@ -51,11 +52,11 @@ If preflight reports a blocker, stop and report it. Do not improvise shell synta
 
 Run:
 
-    <python> <skills>/decomp/scripts/inspect_project.py <target> > <target>/.decomp-agent/project.json
+    <python> ../../scripts/inspect_project.py <target> > <target>/.decomp-agent/project.json
 
 If an ARM9 XMAP exists, parse it now, before the reference gate:
 
-    <python> <skills>/decomp/scripts/parse_xmap.py <xmap> -o <target>/.decomp-agent/xmap-analysis.json
+    <python> ../../scripts/parse_xmap.py <xmap> -o <target>/.decomp-agent/xmap-analysis.json
 
 For PH, identify:
 - EUR or USA version;
@@ -78,13 +79,13 @@ Locate the local clone of:
 
 Run:
 
-    <python> <skills>/decomp/scripts/analyze_reference_project.py <ph-reference> --xmap <target>/.decomp-agent/xmap-analysis.json --objdiff <ph-reference>/objdiff.json -o <target>/.decomp-agent/reference/ph-analysis.json
+    <python> ../../scripts/analyze_reference_project.py <ph-reference> --xmap <target>/.decomp-agent/xmap-analysis.json --objdiff <ph-reference>/objdiff.json -o <target>/.decomp-agent/reference/ph-analysis.json
 
 If <ph-reference>/objdiff.json does not exist, omit the --objdiff argument.
 
 Then:
 
-    <python> <skills>/decomp/scripts/candidate_gate.py <target>/objdiff.json <target>/.decomp-agent/reference/ph-analysis.json -o <target>/.decomp-agent/reference/candidate-gate.json
+    <python> ../../scripts/candidate_gate.py <target>/objdiff.json <target>/.decomp-agent/reference/ph-analysis.json -o <target>/.decomp-agent/reference/candidate-gate.json
 
 The candidate gate is a hard selection filter:
 - `skip_unit_by_default`: do not re-decompile functions covered by unmarked reference source unless target evidence proves a mismatch.
@@ -104,7 +105,7 @@ The XMAP was parsed in step 2. If a Ghidra project is available, use Ghidra's su
 
 Then:
 
-    <python> <skills>/decomp/scripts/correlate_xmap.py <target>/.decomp-agent/xmap-analysis.json <target>/.decomp-agent/ghidra-program.json -o <target>/.decomp-agent/xmap-ghidra.json
+    <python> ../../scripts/correlate_xmap.py <target>/.decomp-agent/xmap-analysis.json <target>/.decomp-agent/ghidra-program.json -o <target>/.decomp-agent/xmap-ghidra.json
 
 Use exact addresses where possible. Never invent an address delta.
 
