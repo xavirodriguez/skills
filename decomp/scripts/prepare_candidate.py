@@ -17,6 +17,16 @@ def load(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def resolve_input(project: Path, path: Path | None) -> Path | None:
+    if path is None:
+        return None
+    if path.is_absolute():
+        return path.resolve()
+    candidate = (project / path).resolve()
+    if candidate.exists():
+        return candidate
+    fallback = path.resolve()
+    return fallback if fallback.exists() else None
 def safe_name(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("_") or "candidate"
 
@@ -138,7 +148,7 @@ Prior lessons from previous functions:
 Work:
 1. Verify the function is real game logic and not a getter, stub, wrapper, initializer or table/data helper.
 2. Read the supplied source and evidence.
-3. Inspect objdiff.txt and diagnose the first mismatch.
+3. Read the supplied compare.json/report evidence and diagnose the first mismatch.
 4. Make one source-level hypothesis/change.
 5. Build and run the project's authoritative comparison.
 6. Record the result in .decomp-agent/hypotheses.jsonl.
@@ -161,7 +171,7 @@ def main() -> int:
     parser.add_argument("-o", "--output", type=Path)
     args = parser.parse_args()
 
-    selection = load(args.selection_json)
+    selection = load(selection_path)
     candidates = selection.get("tier2", {}).get("candidates")
     if candidates is None:
         candidates = selection.get("eligible", [])
@@ -174,6 +184,14 @@ def main() -> int:
         raise SystemExit("Candidate not found: " + args.candidate)
 
     project = args.project.resolve()
+    selection_path = resolve_input(project, args.selection_json)
+    if selection_path is None:
+        raise SystemExit(f"Selection file not found relative to project: {args.selection_json}")
+    compare_json = resolve_input(project, args.compare_json)
+    scout_json = resolve_input(project, args.scout_json)
+    analysis_json = resolve_input(project, args.analysis_json)
+    reference_json = resolve_input(project, args.reference_json)
+    xmap_json = resolve_input(project, args.xmap_json)
     output = args.output.resolve() if args.output else (
         project / ".decomp-agent" / "challenge" / "candidates" / safe_name(args.candidate)
     )
@@ -220,8 +238,8 @@ def main() -> int:
         )
         manifest["files"]["scout"] = "evidence/scout.json"
 
-    if args.scout_json and args.scout_json.is_file():
-        full_scout = load(args.scout_json)
+    if scout_json is not None:
+        full_scout = load(scout_json)
         matching = next(
             (item for item in full_scout.get("candidates", []) if item.get("name") == args.candidate),
             None,
@@ -238,8 +256,12 @@ def main() -> int:
         ("reference_json", "reference.json"),
         ("xmap_json", "xmap.json"),
     ):
-        path = getattr(args, arg_name)
-        if path and path.is_file():
+        path = {
+            "analysis_json": analysis_json,
+            "reference_json": reference_json,
+            "xmap_json": xmap_json,
+        }[arg_name]
+        if path is not None:
             shutil.copy2(path, evidence_dir / filename)
             manifest["files"][arg_name] = "evidence/" + filename
 
@@ -323,8 +345,8 @@ def main() -> int:
                 manifest["files"]["memory"] = "evidence/memory.json"
                 manifest["files"]["function"] = "evidence/function.json"
 
-    if args.compare_json and args.compare_json.is_file():
-        shutil.copy2(args.compare_json, evidence_dir / "compare.json")
+    if compare_json is not None:
+        shutil.copy2(compare_json, evidence_dir / "compare.json")
         manifest["files"]["compare"] = "evidence/compare.json"
     (output / "prior-knowledge.json").write_text(
         json.dumps(compact(prior_knowledge), indent=2, sort_keys=True) + "\n",
