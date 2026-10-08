@@ -47,18 +47,16 @@ The output contains CFG, branch/loop/switch evidence, calls, globals, stores, an
 
 The scout is evidence only. objdiff remains authoritative.
 
-## 4. Run the Tier 2 autopilot
+## 4. Run the unified Tier 2 selector
 
 Run:
 
-    <python> <skills>/decomp/scripts/challenge_autopilot.py \
+    <python> <skills>/decomp/scripts/challenge.py \
       .decomp-agent/challenge/report.json \
       --scout .decomp-agent/challenge/tier2-scout.json \
       --project . \
-      --objdiff-json objdiff.json \
+      --reference .decomp-agent/reference/ph-analysis.json \
       --top 10 \
-      --write-packs \
-      --objdiff-cli .\\objdiff-cli.exe \
       -o .decomp-agent/challenge/tier2-selection.json
 
 The autopilot applies all mechanical gates:
