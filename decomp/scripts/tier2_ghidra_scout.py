@@ -226,9 +226,23 @@ def main():
             })
             continue
 
+        ghidra = evidence(function)
         candidates.append({
             **row,
-            "ghidra": evidence(function),
+            "entry": ghidra["entry"],
+            "instructions": ghidra["instructions"],
+            "blocks": ghidra["blocks"],
+            "callers": ghidra["callers"],
+            "callees": ghidra["callees"],
+            "globals": ghidra["globals"],
+            "signature": ghidra["signature"],
+            "has_branch": ghidra["has_branch"],
+            "has_loop": ghidra["has_loop"],
+            "has_switch": ghidra["has_switch"],
+            "has_store": ghidra["has_store"],
+            "is_thunk": ghidra["is_thunk"],
+            "is_external": ghidra["is_external"],
+            "ghidra_name": ghidra["name"],
         })
 
     print(json.dumps({
