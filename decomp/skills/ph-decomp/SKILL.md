@@ -1,180 +1,123 @@
 ---
 name: ph-decomp
-description: Orchestrate Phantom Hourglass matching decompilation on Windows or POSIX with task-aware routing, targeted analysis and authoritative verification.
+description: Orchestrate Zelda: Phantom Hourglass decompilation workflows with task-aware routing, PH-specific evidence gates and authoritative matching verification.
 compatibility: OpenCode and Codex
 ---
 
 # Phantom Hourglass Decompilation
 
-
 ## Helper path resolution
 
-Helper paths such as `../../scripts/<helper>` are relative to the directory containing this `SKILL.md`. Resolve them against the skill base directory before passing them to the shell or Ghidra. Do not rely on the target project's current working directory.
+Helper paths such as \`../../scripts/<helper>\` are relative to the directory containing this \`SKILL.md\`. Resolve them against the skill base directory before passing them to the shell or Ghidra. Do not rely on the target project's current working directory.
+
+## Role
+
+This is the **Phantom Hourglass entry-point**. Generic reverse-engineering, matching and experiment rules live in \`matching-decomp\`. Challenge selection/verification rules live in \`ph-challenge\`.
+
+Do not duplicate those policies here. Load the secondary skill only when the workflow reaches that phase.
 
 ## Task routing
 
-Choose the smallest workflow that satisfies the request before starting the pipeline.
+Choose the smallest PH workflow that satisfies the request:
 
-- **EXPLAIN / INSPECT:** read the requested file/symbol and answer. Do not run preflight, reference, XMAP or candidate gates.
-- **ANALYZE:** for a known function/address, run only the checks required for Ghidra/analysis. Do not run global selection gates.
-- **TARGET_MATCH:** when the user names the function, skip candidate selection, reference gate and XMAP gate unless one is required to resolve the target. Verify the real build/compare command before matching.
-- **SELECT / CHALLENGE:** use the full preflight -> inspection -> reference/XMAP -> candidate pipeline.
+- **EXPLAIN** — answer a conceptual question about PH, assembly, structs, vtables or compiler behavior. Read only what is needed.
+- **INSPECT** — inspect a named PH source file, symbol, report or project area. Do not start the global pipeline.
+- **ANALYZE** — collect targeted Ghidra/XMAP/reference evidence for a known target.
+- **TARGET_MATCH** — match a concrete function supplied by the user. Skip candidate selection and global scouting. Load \`matching-decomp\` for the matching loop.
+- **SELECT** — choose an unknown target. Run the PH reference/XMAP/candidate gates.
+- **CHALLENGE** — select, solve or verify a Tier 1/2/3 challenge target. Load \`ph-challenge\`.
 
-Never let activation of `ph-decomp` override explicit user constraints. Track READ/ANALYZE/EDIT/BUILD/COMPARE/SELECT permissions for the session.
+Explicit user constraints remain active. Do not edit, build, compare, switch branches or create worktrees unless the request authorizes the action.
 
-Do not create worktrees, reset files, switch branches, or discard user changes unless the workflow explicitly calls for isolation and the user has authorized that mutation.
+## Session policy
 
+For workflows that execute helpers, a policy file can turn the request constraints into executable gates:
 
-Use this skill as the entry point for Zelda: Phantom Hourglass. It orchestrates reference-decomp, xmap-analysis and matching-decomp.
+    <python> ../../scripts/session_policy.py init --mode target-match --force
+    <python> ../../scripts/session_policy.py show
 
-Do not start by selecting an incomplete objdiff unit. Establish the environment and run the reference/XMAP gates first.
+Supported modes:
 
-## 1. Preflight when the selected mode requires it
+    explain
+    inspect
+    analyze
+    target-match
+    select
+    challenge
 
-For **SELECT**, **CHALLENGE**, and **TARGET_MATCH**, establish the minimum required environment before helpers or build/compare commands.
+Pass \`--policy .decomp-agent/session-policy.json\` to helpers that support it. Missing policy means no additional restriction; an existing policy is enforced.
 
-For **EXPLAIN**, **INSPECT**, and targeted read-only analysis, do not run the full PH preflight unless the requested analysis actually needs it.
+## PH-specific baseline
 
-Use the native Windows check when Python may be unavailable:
+Before **TARGET_MATCH**, **SELECT** or **CHALLENGE** work:
 
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../../scripts/preflight.ps1 <target>
+1. Establish the game version (EUR/USA) and active build configuration.
+2. Run the PH preflight when the selected workflow requires it.
+3. Identify \`tools/configure.py\`, Ninja targets, \`objdiff.json\`, build outputs and the authoritative compare/report command.
+4. Treat \`arm9.o.xMAP\` as linker/build evidence. Never assume a virtual address is a ROM/file offset.
 
-Once Python is available:
-
-    <python> ../../scripts/preflight.py <target> --reference <ph-reference> --xmap <xmap>
-
-On POSIX:
-
-    <python> ../../scripts/preflight.py <target> --reference <ph-reference> --xmap <xmap>
-
-Do not assume `python3` on Windows. Use the interpreter reported by preflight.
-
-Shell commands must match the active shell. In PowerShell do not use Bash chaining, Bash heredocs, `source`, `mkdir -p`, or other Bash-only syntax. Do not write inline Python for repository inspection when a helper script exists. Run commands as separate steps.
-
-If preflight reports a blocker, stop and report it. Do not improvise shell syntax or bypass the blocker.
-
-## 2. Inspect the target
-
-Run:
-
-    <python> ../../scripts/inspect_project.py <target> > <target>/.decomp-agent/project.json
-
-If an ARM9 XMAP exists, parse it now, before the reference gate:
-
-    <python> ../../scripts/parse_xmap.py <xmap> -o <target>/.decomp-agent/xmap-analysis.json
-
-For PH, identify:
-- EUR or USA version;
-- compiler and flags;
-- `tools/configure.py`;
-- Ninja targets;
-- `objdiff.json`;
-- `build/<version>/arm9.o.xMAP`;
-- authoritative report/check commands.
-
-Never invent build or compare commands.
-
-## 3. Reference gate — mandatory for SELECT/CHALLENGE
-
-For **TARGET_MATCH** with a concrete user-supplied function, skip this gate unless reference evidence is required to resolve or interpret the target.
-
-Locate the local clone of:
+Use the reference project only as prior work:
 
     https://github.com/zeldaret/ph
 
-Run:
+Its source annotations are not match proof. Prefer its verified build/report data when available.
 
-    <python> ../../scripts/analyze_reference_project.py <ph-reference> --xmap <target>/.decomp-agent/xmap-analysis.json --objdiff <ph-reference>/objdiff.json -o <target>/.decomp-agent/reference/ph-analysis.json
+## Targeted evidence
 
-If <ph-reference>/objdiff.json does not exist, omit the --objdiff argument.
+For a supplied function/address, use only the evidence needed to resolve that target:
 
-Then:
+    <python> ../../scripts/inspect_project.py <target>
+    <python> ../../scripts/analyze_function.py <function-or-address>
 
-    <python> ../../scripts/candidate_gate.py <target>/objdiff.json <target>/.decomp-agent/reference/ph-analysis.json -o <target>/.decomp-agent/reference/candidate-gate.json
+Parse XMAP only when it materially helps:
 
-The candidate gate is a hard selection filter:
-- `skip_unit_by_default`: do not re-decompile functions covered by unmarked reference source unless target evidence proves a mismatch.
-- `inspect_reference_nonmatching`: reuse the reference implementation/context and focus on exact code generation.
-- `inspect_reference`: inspect reference evidence manually before choosing a target.
-- `target_analysis_allowed`: no reference function was correlated to the unit.
+    <python> ../../scripts/parse_xmap.py <xmap> -o <target>/.decomp-agent/xmap-analysis.json
 
-Do not equate an incomplete objdiff unit with every function in that unit being unmatched.
+When Ghidra project-level identity is needed:
 
-## 4. XMAP/Ghidra correlation
+    analyzeHeadless ... -postScript export_ghidra_program.py
 
-For **SELECT/CHALLENGE**, run the full correlation gate. For **TARGET_MATCH** or **ANALYZE**, use XMAP only when it materially helps resolve the supplied target.
+Never invent an address delta.
 
-The XMAP was parsed in step 2. If a Ghidra project is available, use Ghidra's supported headless API:
+## Selection gates
 
-    analyzeHeadless.bat <project-dir> <project-name> -process <program> -scriptPath ../../scripts -postScript export_ghidra_program.py
+For **SELECT**:
 
-Then:
+1. inspect the target project;
+2. analyze the PH reference project;
+3. parse/correlate XMAP where available;
+4. generate the authoritative objdiff report;
+5. run the function-level candidate gate;
+6. choose one target.
 
-    <python> ../../scripts/correlate_xmap.py <target>/.decomp-agent/xmap-analysis.json <target>/.decomp-agent/ghidra-program.json -o <target>/.decomp-agent/xmap-ghidra.json
+An incomplete objdiff unit does not mean every function in the unit is unmatched.
 
-Use exact addresses where possible. Never invent an address delta.
+For **CHALLENGE**, follow \`ph-challenge\` and its unified selector. Heuristics are screening evidence; objdiff remains authoritative.
 
-## 5. Select one function
+## Matching handoff
 
-For challenge work, delegate objective selection to ph-challenge and its unified challenge.py engine. For normal decompilation, select a concrete function only after the reference/XMAP evidence gates.
+Once a concrete target is selected, load:
 
+    matching-decomp
 
-Choose one target only after the gates.
+Then follow its evidence -> hypothesis -> one source change -> build -> authoritative compare -> ledger loop.
 
-A valid target must:
-- be actually incomplete in authoritative target comparison;
-- not be blocked by an unmarked reference implementation by default;
-- have a concrete source file/TU;
-- have a resolved XMAP/Ghidra identity when available.
+A partial match is not success. An exact authoritative target match is required before completion.
 
-If the only evidence is "objdiff unit incomplete", perform more inspection instead of assuming the function is unmatched.
+## Failure handling
 
-## 6. Matching loop
+Stop on infrastructure blockers such as missing executables/paths, invalid shell invocation, unavailable project state or helper infrastructure errors.
 
-Use matching-decomp:
-1. analyze one function;
-2. preserve JSON evidence;
-3. propose exactly one source change;
-4. dry-run the harness;
-5. build and compare;
-6. parse the first mismatch;
-7. record one hypothesis and result;
-8. repeat.
+Treat compiler/linker failures caused by the current source hypothesis and compare mismatches as experiment evidence. Do not blindly retry infrastructure failures or replace helpers with ad-hoc scripts.
 
-Never call semantic equivalence an exact match.
+## Output
 
-## 7. Windows execution
+For PH orchestration, report:
 
-Use separate commands, for example:
-
-    Set-Location D:\xavi\ph
-    <python> <skills>\decomp\scripts\inspect_project.py .
-
-For the harness:
-
-    <python> <skills>\decomp\scripts\run_match.py --project . --target <function> --shell powershell --build-command "ninja arm9" --compare-command "ninja report check" --dry-run
-
-Do not generate `&&`, `||`, Bash heredocs, or `python3 -c` inspection snippets in PowerShell.
-
-## Failure classification
-
-Stop on genuine environment blockers: missing required executables/paths, invalid shell invocation, unavailable project state, or infrastructure errors such as `helper_unknown_error`.
-
-Do not blindly retry failed infrastructure commands, switch shell syntax, or create ad-hoc inline scripts to replace a helper.
-
-Treat compiler errors, linker errors caused by the current source hypothesis, partial matches, and compare mismatches as experiment evidence. Diagnose them and continue one hypothesis at a time within the user's action budget.
-
-## Context discipline
-
-Write large JSON results to `.decomp-agent/` and keep stdout concise. Read only the records relevant to the active target or current gate. Do not discard data by taking the first three or first ten results; filter by target identity instead.
-
-Load `ph-challenge`, `matching-decomp`, `reference-decomp`, or `xmap-analysis` instructions only when the selected workflow reaches that phase.
-
-## 8. Stop conditions
-
-Stop only for:
-- verified exact target match;
-- concrete environment blocker;
-- explicit user budget.
-
-Preserve diagnostic artifacts when blocked.
+1. game version and target;
+2. relevant build/compiler facts;
+3. evidence source and confidence;
+4. target-selection rationale when applicable;
+5. authoritative compare result;
+6. session-policy/blocker status;
+7. paths to preserved artifacts under \`.decomp-agent/\`.
