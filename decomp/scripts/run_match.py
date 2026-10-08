@@ -319,6 +319,10 @@ def main() -> int:
         print("Refusing to execute without --force. Use --dry-run for planning.", flush=True)
         return 2
 
+    state.mkdir(parents=True, exist_ok=True)
+    target_state.mkdir(parents=True, exist_ok=True)
+    write_json(state / "run.json", config)
+
     ledger = state / "hypotheses.jsonl"
     previous_entries = read_entries(ledger)
 
