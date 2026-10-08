@@ -48,6 +48,8 @@ Skill para **matching decompilation** de juegos y software legacy: Ghidra/PyGhid
 
 ### Flujo
 
+El agente primero clasifica la tarea. Las consultas puntuales no activan el pipeline completo: EXPLAIN/INSPECT/ANALYZE/TARGET_MATCH usan solo las herramientas necesarias; SELECT/CHALLENGE activan los gates globales.
+
 ```
 inspect -> scout -> analyze -> propose -> dry-run -> apply one change
   -> build -> authoritative compare -> parse -> ledger -> repeat
@@ -88,6 +90,8 @@ Después de inspeccionar el proyecto, el agente debe descubrir y usar sus comand
 - Un cambio por iteración.
 - El compare autoritativo decide el éxito.
 - Los logs y el hypothesis ledger hacen el proceso reproducible.
+- Las restricciones explícitas del usuario limitan edición, build, compare y cambios de worktree.
+- Los errores de infraestructura se detienen; los errores derivados de una hipótesis de código se tratan como evidencia.
 
 La implementación está documentada en `decomp/MANUAL.md`.
 

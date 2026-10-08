@@ -5,6 +5,20 @@ description: Select and solve Phantom Hourglass functions against a decompilatio
 
 # Phantom Hourglass Challenge
 
+## Request routing
+
+Use the challenge pipeline only when the user asks to **select, solve, or verify a challenge tier**.
+
+For a named candidate or a question about an existing candidate pack:
+- use targeted inspection/analysis;
+- do not regenerate the global report, scout population or reference gate unless the user asks for a fresh selection or the evidence is stale/missing;
+- never edit or build merely because a challenge skill is active.
+
+Honor explicit constraints such as "explain first", "do not edit", or "do not compile yet" before advancing phases.
+
+For autonomous selection, use the full objective pipeline and keep complete reports under `.decomp-agent/` while exposing only compact summaries in context.
+
+
 Use this skill when the goal is the decomp challenge, not merely general PH decompilation.
 
 ## 1. Establish a clean baseline
@@ -123,6 +137,16 @@ Use the selector's complexity signals plus a written argument covering:
 - why it is harder than the Tier 2 target.
 
 A failed but well-documented hard attempt is preferable to pretending an easy function is difficult.
+
+## Failure policy
+
+Stop on infrastructure blockers such as missing required executables, invalid shell invocation, missing project state, or explicit helper infrastructure errors. Do not blindly retry or invent replacement scripts.
+
+Treat source compile errors, linker errors caused by the current hypothesis, and compare mismatches as experiment evidence. Diagnose and iterate one source change at a time.
+
+## Context discipline
+
+Keep authoritative reports and scout JSON on disk. Read only summary fields, the selected candidate, or target-specific evidence needed for the current decision. Never truncate by position ("first three") when relevance filtering can identify the correct records.
 
 ## 8. Matching loop
 

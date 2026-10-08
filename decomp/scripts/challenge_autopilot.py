@@ -25,6 +25,29 @@ def select_tier2(
     return result
 
 
+
+def compact_summary(result: dict) -> dict:
+    summary = result["summary"]
+    candidates = result.get("tier2", {}).get("candidates", [])
+    return {
+        "format": result["format"],
+        "status": "written",
+        "remaining_functions": summary["remaining_functions"],
+        "undecompiled_functions": summary["undecompiled_functions"],
+        "p75_bytes": summary["p75_bytes"],
+        "tier2_threshold_bytes": summary["tier2_threshold_bytes"],
+        "eligible_candidates": summary["eligible_candidates"],
+        "top_tier2": [
+            {
+                "name": item.get("name"),
+                "size": item.get("size"),
+                "success_score": item.get("success_score"),
+                "game_logic_score": item.get("game_logic_score"),
+            }
+            for item in candidates[:5]
+        ],
+    }
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report_json", type=Path)
@@ -37,6 +60,11 @@ def main() -> int:
     parser.add_argument("--min-size", type=int, default=256)
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument("--write-packs", action="store_true")
+    parser.add_argument(
+        "--full-output",
+        action="store_true",
+        help="Print the full selection JSON instead of the compact summary.",
+    )
     args = parser.parse_args()
 
     result = evaluate(
@@ -78,7 +106,10 @@ def main() -> int:
                 command.extend(["--reference-json", str(args.reference)])
             subprocess.run(command, check=True)
 
-    print(json.dumps(result, indent=2, sort_keys=True))
+    if args.full_output:
+        print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        print(json.dumps(compact_summary(result), indent=2, sort_keys=True))
     return 0
 
 

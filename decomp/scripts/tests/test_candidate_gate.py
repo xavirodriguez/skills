@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from candidate_gate import gate
+from candidate_gate import compact_summary, gate
 
 
 class CandidateGateTests(unittest.TestCase):
@@ -66,6 +66,23 @@ class CandidateGateTests(unittest.TestCase):
         self.assertEqual(item["action"], "reuse_verified_reference")
         self.assertEqual(result["summary"]["new_target_analysis"], 0)
 
+
+    def test_compact_summary_does_not_expose_function_rows(self) -> None:
+        result = gate(
+            {
+                "units": [{
+                    "name": "u",
+                    "functions": [
+                        {"name": "A", "size": 64, "address": "0x1000"},
+                        {"name": "B", "size": 64, "address": "0x1100"},
+                    ],
+                }]
+            },
+            {"functions": []},
+        )
+        summary = compact_summary(result)
+        self.assertEqual(summary["target_incomplete_functions"], 2)
+        self.assertNotIn("functions", summary)
 
 if __name__ == "__main__":
     unittest.main()
