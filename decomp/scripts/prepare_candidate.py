@@ -222,6 +222,69 @@ def main() -> int:
             shutil.copy2(path, evidence_dir / filename)
             manifest["files"][arg_name] = "evidence/" + filename
 
+            if arg_name == "analysis_json":
+                analysis = load(path)
+                function = analysis.get("function", {})
+                instructions = analysis.get("instructions", [])
+                relationships = analysis.get("relationships", {})
+                cfg = analysis.get("cfg", [])
+                memory = analysis.get("memory", {})
+
+                (evidence_dir / "assembly.txt").write_text(
+                    "\n".join(
+                        str(item.get("address", "")) + "  " + str(item.get("text", ""))
+                        for item in instructions
+                    ) + "\n",
+                    encoding="utf-8",
+                )
+                (evidence_dir / "pcode.txt").write_text(
+                    "\n".join(
+                        str(item.get("address", "")) + "  " +
+                        "\n".join(
+                            "  " + str(op)
+                            for ins in item.get("pcode", [])
+                            for op in [op]
+                        )
+                        for item in instructions
+                    ) + "\n",
+                    encoding="utf-8",
+                )
+                (evidence_dir / "cfg.json").write_text(
+                    json.dumps(cfg, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                (evidence_dir / "xrefs.json").write_text(
+                    json.dumps(
+                        [
+                            ref
+                            for item in instructions
+                            for ref in item.get("references", [])
+                        ],
+                        indent=2,
+                        sort_keys=True,
+                    ) + "\n",
+                    encoding="utf-8",
+                )
+                (evidence_dir / "relationships.json").write_text(
+                    json.dumps(relationships, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                (evidence_dir / "memory.json").write_text(
+                    json.dumps(memory, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                (evidence_dir / "function.json").write_text(
+                    json.dumps(function, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                manifest["files"]["assembly"] = "evidence/assembly.txt"
+                manifest["files"]["pcode"] = "evidence/pcode.txt"
+                manifest["files"]["cfg"] = "evidence/cfg.json"
+                manifest["files"]["xrefs"] = "evidence/xrefs.json"
+                manifest["files"]["relationships"] = "evidence/relationships.json"
+                manifest["files"]["memory"] = "evidence/memory.json"
+                manifest["files"]["function"] = "evidence/function.json"
+
     if args.objdiff_cli:
         code, diff = run_objdiff(args.objdiff_cli.resolve(), project, args.candidate)
         (output / "objdiff.txt").write_text(diff, encoding="utf-8")
