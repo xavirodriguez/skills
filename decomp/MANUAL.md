@@ -368,6 +368,8 @@ Initialize a mode with:
 
     python3 decomp/scripts/session_policy.py init --mode target-match --force
 
+Autonomous helpers should pass `--require-policy` to turn a missing policy into a hard blocker.
+
 The helpers enforce existing policy files. `run_match.py` guards build/compare, while challenge selectors guard selection.
 
 The global hypothesis ledger is:
