@@ -664,6 +664,11 @@ def main() -> int:
     skip.add_argument("--session", type=Path, default=Path(".decomp-agent/challenge/session.json"))
     skip.add_argument("--target", required=True)
     skip.add_argument("--reason", required=True)
+    skip.add_argument(
+        "--force",
+        action="store_true",
+        help="Explicitly abandon the active target; never use in autonomous selection.",
+    )
 
     status = sub.add_parser("status")
     status.add_argument("--session", type=Path, default=Path(".decomp-agent/challenge/session.json"))
@@ -828,6 +833,15 @@ def main() -> int:
         )
         if candidate is None:
             raise SystemExit(f"Target not found: {args.target}")
+        if (
+            candidate.get("key") == session.get("current_target")
+            and candidate.get("status") in {"active", "integration-pending"}
+            and not args.force
+        ):
+            raise SystemExit(
+                "Refusing to skip current target without --force. "
+                "Autonomous batches must resolve the current target before advancing."
+            )
         candidate["status"] = "blocked"
         candidate["blocked_reason"] = args.reason
         candidate["blocked_at"] = now_utc()
