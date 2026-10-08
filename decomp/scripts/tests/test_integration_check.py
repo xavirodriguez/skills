@@ -47,6 +47,7 @@ class IntegrationEvidenceTests(unittest.TestCase):
                 "range": {"kind": "delink", "start": "0x02042580", "end": "0x02042617"},
                 "padding": {"before": [], "after": []},
                 "evidence": ["mirrored from USA"],
+                "verification": {"status": "pass", "function_match_percent": 100.0, "command": "ninja check"},
                 "independent_evidence": False,
             },
         })
@@ -74,6 +75,7 @@ class IntegrationEvidenceTests(unittest.TestCase):
                 "range": {"kind": "delink", "start": "0x0204253C", "end": "0x020425D3"},
                 "padding": {"before": [], "after": []},
                 "evidence": ["xMAP"],
+                "verification": {"status": "pass", "function_match_percent": 100.0, "command": "ninja check"},
             }
         })
         with self.assertRaises(ValueError):
