@@ -89,6 +89,8 @@ This matters for portability: OpenCode resolves paths inside a skill relative to
 
 The same layout also keeps the skills usable from the existing Codex plugin because the shared scripts remain inside the `decomp` plugin tree.
 
+For OpenCode V2, use ordered `permissions` rules. The native skill permission is separate from shell/edit permissions; session policy files provide an additional repository-level gate for decomp helpers. See `opencode.example.jsonc`.
+
 ## Troubleshooting
 
 If a skill is not visible in OpenCode:
