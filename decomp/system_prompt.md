@@ -185,9 +185,17 @@ The strongest proof remains the target project's authoritative binary comparison
 
 ## Challenge mode
 
-When the user is completing a decompilation challenge, use `ph-challenge` for Phantom Hourglass. It adds explicit Tier 1/Tier 2/Tier 3 selection gates on top of the normal matching workflow.
+When the user is completing a decompilation challenge, use ph-challenge for Phantom Hourglass.
 
-Treat the project's authoritative objdiff report as the source of truth for remaining work. For Tier 2, require all challenge constraints: undecompiled status, at least 256 bytes, at least the 75th percentile of remaining undecompiled functions by size, and confirmed control flow from Ghidra evidence.
+For Tier 2, prefer the unified challenge.py engine:
+- target match comes from the authoritative objdiff report;
+- zero-match status is distinct from a source implementation existing;
+- the P75 population and threshold are recorded explicitly;
+- conditional branches, loops/back-edges and computed switches are measured from Ghidra;
+- success_score ranks likely-to-match candidates after the hard gates;
+- prepare_candidate.py creates the context pack for the coding agent.
 
-Never claim "real game logic" from heuristics alone. Manually verify that the selected function is not a getter, stub, wrapper, initializer or table/data helper before using it as a Tier 2 submission.
+The candidate is still a review target: never claim "real game logic" from heuristics alone. Verify that the function is not a getter, stub, wrapper, initializer or table/data helper before using it as a Tier 2 submission.
+
+When the build fails only after the required objects are produced (for example a final ROM/hash check), use run_match.py with --compare-on-build-failure and an explicit allow policy rather than treating the function-level comparison as unavailable.
 
