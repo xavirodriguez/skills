@@ -36,7 +36,7 @@ Calcula y documenta automáticamente:
 Uso:
 
 ```powershell
-<python> decomp/scripts/challenge_selector.py .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/scout.json --top 20
+<python> decomp/scripts/challenge.py .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --project . --top 10 -o .decomp-agent/challenge/tier2-selection.json
 ```
 
 El selector no decide por sí solo si una función contiene lógica de juego real: esa comprobación requiere inspección manual.
@@ -59,12 +59,15 @@ inspect -> scout -> analyze -> propose -> dry-run -> apply one change
 - `decomp/skills/ph-decomp/SKILL.md` — entry-point para Phantom Hourglass.
 - `decomp/system_prompt.md` — prompt para el agente.
 - `decomp/scripts/inspect_project.py` — descubre señales de build/decomp.
+- `decomp/scripts/tier2_ghidra_scout.py` — filtra y mide funciones que ya cumplen el tamaño Tier 2.
+- `decomp/scripts/challenge.py` — motor unificado de selección y scoring.
+- `decomp/scripts/prepare_candidate.py` — genera el pack de contexto para Codex.
 - `decomp/scripts/scout_functions.py` — prioriza funciones candidatas en Ghidra.
 - `decomp/scripts/analyze_function.py` — genera evidencia JSON de una función.
-- `decomp/scripts/run_match.py` — ejecuta build/compare explícitos de forma controlada.
-- `decomp/scripts/parse_compare.py` — extrae evidencia de logs de comparación.
+- `decomp/scripts/run_match.py` — ejecuta build/compare y mantiene el ledger de experimentos.
+- `decomp/scripts/parse_compare.py` — extrae evidencia estructurada de logs de comparación.
 - `decomp/scripts/parse_xmap.py` — analiza linker maps/XMAP.
-- `decomp/scripts/candidate_gate.py` — filtra candidatos con evidencia de referencia.
+- `decomp/scripts/candidate_gate.py` — filtra evidencia de referencia por función.
 - `decomp/MANUAL.md` — manual completo del workflow.
 
 ### Uso mínimo
@@ -87,3 +90,26 @@ Después de inspeccionar el proyecto, el agente debe descubrir y usar sus comand
 - Los logs y el hypothesis ledger hacen el proceso reproducible.
 
 La implementación está documentada en `decomp/MANUAL.md`.
+
+
+### Tier 2 automatizado
+
+Pipeline recomendada:
+
+    report.json
+        -> tier2_ghidra_scout.py
+        -> challenge.py
+        -> prepare_candidate.py
+        -> Codex
+        -> run_match.py
+        -> objdiff
+
+El selector usa el reporte autoritativo para match, calcula el P75 de las funciones zero-match restantes, comprueba control flow y prioriza candidatos con success score y game-logic score.
+
+Ejemplo:
+
+    <python> decomp/scripts/challenge.py .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --project . --top 10 -o .decomp-agent/challenge/tier2-selection.json
+
+    <python> decomp/scripts/prepare_candidate.py .decomp-agent/challenge/tier2-selection.json <candidate> --project . --objdiff-cli .\\objdiff-cli.exe --scout-json .decomp-agent/challenge/tier2-scout.json
+
+El pack contiene el contexto disponible para el agente y un prompt corto. La clasificación final de real game logic sigue requiriendo revisión.
