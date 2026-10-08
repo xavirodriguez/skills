@@ -15,6 +15,14 @@ Helper paths such as `../../scripts/<helper>` are relative to the directory cont
 
 Use the challenge pipeline only when the user asks to **select, solve, or verify a challenge tier**.
 
+Determine the requested operation from the user's input before doing any work:
+- `Tier 1`, `Tier 2`, or `Tier 3` selects that challenge workflow directly;
+- a named function or candidate selects targeted matching/inspection for that function;
+- `verify Tier N` selects verification only;
+- ask one clarification question only when the requested operation cannot be determined from the user input.
+
+Once the operation is determined, do not ask the user to choose again. Continue autonomously until the next explicit decision point or a real infrastructure blocker.
+
 For a named candidate or a question about an existing candidate pack:
 - use targeted inspection/analysis;
 - do not regenerate the global report, scout population or reference gate unless the user asks for a fresh selection or the evidence is stale/missing;
@@ -24,19 +32,32 @@ Honor explicit constraints such as "explain first", "do not edit", or "do not co
 
 For autonomous selection, use the full objective pipeline and keep complete reports under `.decomp-agent/` while exposing only compact summaries in context.
 
-
 Use this skill when the goal is the decomp challenge, not merely general PH decompilation.
 
-## 1. Establish a clean baseline
+## 1. Challenge gate: decide admissibility before heavy work
 
-For autonomous challenge work, materialize the permission budget first:
+For an explicit Tier request, check the minimum admission evidence before running a clean rebuild, global scout, published-progress lookup, or other expensive baseline work.
+
+At minimum:
+- Tier 1: establish whether an exact candidate is being verified or selected;
+- Tier 2: verify the Tier 2 mechanical gates before matching;
+- Tier 3: verify that a solid Tier 1 exact result and a solid Tier 2 exact result are already recorded.
+
+If a required prerequisite is missing, stop after collecting only the evidence needed to prove the blocker. Do not continue into target matching or expensive global analysis.
+
+For Tier 3, the prerequisite is exact authoritative completion evidence for both Tier 1 and Tier 2. A high fuzzy percentage, semantic similarity, or a partial prior attempt does not satisfy the gate.
+
+Published progress from decomp.dev is contextual provenance only. Do not block a challenge solely because local fork progress differs from the published percentage; reconcile the provenance in the final summary instead.
+
+## 2. Establish a clean baseline
+
+For autonomous challenge work that passes the admission gate, materialize the permission budget first:
 
     <python> ../../scripts/session_policy.py init --mode challenge --force
 
 All autonomous selectors then receive:
 
     --policy .decomp-agent/session-policy.json --require-policy
-
 
 Run the PH preflight first. Then follow the project's own README/INSTALL and verify a clean build.
 
@@ -47,9 +68,9 @@ Record:
 - report path and generation command;
 - relevant contribution rules.
 
-The local progress numbers must agree with the project's published decomp.dev progress before selecting challenge targets.
+Do not require local progress numbers to equal decomp.dev. Record any fork/upstream provenance difference as context, not as an admission blocker.
 
-## 2. Generate authoritative progress data
+## 3. Generate authoritative progress data
 
 Use the project's normal build/compare workflow and generate an objdiff v2 report with the installed `objdiff-cli` when the project supports it.
 
@@ -59,7 +80,7 @@ For the selector, preserve the report as:
 
     .decomp-agent/challenge/report.json
 
-## 3. Generate targeted Tier 2 Ghidra evidence
+## 4. Generate targeted Tier 2 Ghidra evidence
 
 For Tier 2, do not use the generic top-100 scout: large functions can be penalized by its ranking and omitted.
 
@@ -76,7 +97,7 @@ The output contains CFG, branch/loop/switch evidence, calls, globals, stores, an
 
 The scout is evidence only. objdiff remains authoritative.
 
-## 4. Run the unified Tier 2 selector
+## 5. Run the unified Tier 2 selector
 
 Run:
 
@@ -112,7 +133,7 @@ The pack contains source, direct headers, objdiff output, Ghidra analysis and su
 
 The final "real game logic" classification remains a review step; heuristics are evidence, not proof.
 
-## 5. Tier 1
+## 6. Tier 1
 
 Prefer a small, clearly undecompiled function that is not an obvious stub/table/data function.
 
@@ -124,7 +145,7 @@ Before editing:
 
 Then use `matching-decomp` and require an exact byte match.
 
-## 6. Tier 2
+## 7. Tier 2
 
 A Tier 2 target must satisfy every gate:
 
@@ -140,9 +161,11 @@ The engine's game_logic_score is a screening signal, not proof. Manually verify 
 
 Choose the highest-success candidate among the eligible set rather than blindly choosing the largest one.
 
-## 7. Tier 3
+## 8. Tier 3
 
 Only attempt Tier 3 after Tier 1 and Tier 2 are solid.
+
+Treat the Tier 3 gate as satisfied only when exact authoritative completion evidence exists for both previous tiers. A prior fuzzy match, a nearly matching implementation, or an undocumented manual result is insufficient.
 
 Use the selector's complexity signals plus a written argument covering:
 - what makes the function hard;
@@ -159,11 +182,17 @@ Stop on infrastructure blockers such as missing required executables, invalid sh
 
 Treat source compile errors, linker errors caused by the current hypothesis, and compare mismatches as experiment evidence. Diagnose and iterate one source change at a time.
 
+Do not retry the same failed command more than once unless the retry changes the diagnosis, invocation, environment, or hypothesis.
+
+Optional documentation, telemetry, or note-writing failures must not turn into repeated attempts or block an otherwise complete challenge decision. Report the artifact failure and continue when the required evidence is already available.
+
+If a patch/edit transport mechanism fails, treat that as an infrastructure or tooling error: do not resend the same malformed patch repeatedly. Either correct the mechanism once or skip the optional artifact and proceed.
+
 ## Context discipline
 
 Keep authoritative reports and scout JSON on disk. Read only summary fields, the selected candidate, or target-specific evidence needed for the current decision. Never truncate by position ("first three") when relevance filtering can identify the correct records.
 
-## 8. Matching loop
+## 9. Matching loop
 
 For each chosen function:
 
@@ -173,7 +202,7 @@ Only an exact authoritative match counts as success.
 
 Never call 99% or semantic equivalence a match.
 
-## 9. Deliverable check
+## 10. Deliverable check
 
 Before opening a PR:
 - reread `CONTRIBUTING.md` and relevant project docs;
