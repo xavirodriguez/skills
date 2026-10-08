@@ -234,6 +234,25 @@ class ChallengeBatchTests(unittest.TestCase):
             self.assertTrue(session["halted"])
             self.assertEqual(session["stop_reason"], "quota-reached")
 
+    def test_next_returns_same_target_while_integration_pending(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.json"
+            session = init_session(
+                path,
+                evaluation_for("A", "B"),
+                tier="tier2",
+                quota=0,
+                max_stagnation=3,
+                replace=True,
+            )
+            session["queue"][0]["status"] = "integration-pending"
+            session["current_target"] = session["queue"][0]["key"]
+            session["phase"] = "integration"
+
+            candidate = choose_next(session)
+            self.assertEqual(candidate["name"], "A")
+            self.assertEqual(candidate["status"], "integration-pending")
+
     def test_exact_match_keeps_target_for_integration(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "session.json"
