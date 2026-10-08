@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from challenge import evaluate, load_json
+from session_policy import require_allowed
 
 
 SESSION_FORMAT = "decomp-challenge-session-v1"
@@ -392,6 +393,12 @@ def main() -> int:
     common.add_argument("--report", type=Path, required=True)
     common.add_argument("--scout", type=Path)
     common.add_argument("--reference", type=Path)
+    common.add_argument(
+        "--policy",
+        type=Path,
+        default=Path(".decomp-agent/session-policy.json"),
+    )
+    common.add_argument("--require-policy", action="store_true")
 
     init = sub.add_parser("init", parents=[common])
     init.add_argument("--tier", choices=("tier1", "tier2", "tier3"), default="tier2")
@@ -423,6 +430,12 @@ def main() -> int:
     refresh.add_argument("--scout", type=Path)
     refresh.add_argument("--reference", type=Path)
     refresh.add_argument("--shell", choices=("powershell", "pwsh", "bash", "cmd"), default="powershell")
+    refresh.add_argument(
+        "--policy",
+        type=Path,
+        default=Path(".decomp-agent/session-policy.json"),
+    )
+    refresh.add_argument("--require-policy", action="store_true")
 
     skip = sub.add_parser("skip")
     skip.add_argument("--session", type=Path, default=Path(".decomp-agent/challenge/session.json"))
@@ -435,6 +448,15 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.command in {"init", "sync"}:
+        try:
+            require_allowed(
+                args.policy,
+                "select",
+                require_file=args.require_policy,
+            )
+        except (OSError, ValueError, PermissionError) as exc:
+            parser.error(str(exc))
+
         evaluation = evaluate(
             load_json(args.report),
             load_json(args.scout) if args.scout else None,
@@ -484,6 +506,15 @@ def main() -> int:
         return 0
 
     if args.command == "refresh":
+        try:
+            require_allowed(
+                args.policy,
+                "build",
+                require_file=args.require_policy,
+            )
+        except (OSError, ValueError, PermissionError) as exc:
+            parser.error(str(exc))
+
         code, refreshed = refresh_report(
             args.session,
             refresh_command=args.refresh_command,
