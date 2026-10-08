@@ -37,6 +37,11 @@ def main() -> int:
     parser.add_argument("--tier2-min-size", type=int, default=256)
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument(
+        "--require-policy",
+        action="store_true",
+        help="Fail when the session policy file is missing.",
+    )
+    parser.add_argument(
         "--policy",
         type=Path,
         default=Path(".decomp-agent/session-policy.json"),
@@ -45,7 +50,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        require_allowed(args.policy, "select")
+        require_allowed(args.policy, "select", require_file=args.require_policy)
     except (OSError, ValueError, PermissionError) as exc:
         parser.error(str(exc))
 
