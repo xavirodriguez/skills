@@ -4,7 +4,7 @@ This guide explains how to use the matching-decomp skill with a real decomp.dev 
 
 ## What this version does
 
-For autonomous Phantom Hourglass runs, use `ph-decomp` as the entry point. It performs a mandatory environment preflight, reference-project gate, XMAP gate, candidate gate, then delegates to `matching-decomp`.
+For autonomous Phantom Hourglass selection/challenge runs, use `ph-decomp` as the entry point. It performs the full environment/reference/XMAP/candidate pipeline only when the request needs global selection. Named-file, named-function and explanatory requests use the targeted routing path and avoid unnecessary gates.
 
 ## Production workflow
 
@@ -51,7 +51,9 @@ For Phantom Hourglass challenge Tier 2, use the targeted Ghidra scout plus the a
 
 This enforces the objective Tier 2 gates from the current report and produces a candidate pack with objdiff evidence and a Codex-ready prompt. It does not pretend that heuristics prove semantic "game logic"; that final classification remains a review step.
 
-The workflow is split into safe, reproducible stages:
+The workflow is split into safe, reproducible stages. The first decision is task routing: EXPLAIN/INSPECT/ANALYZE/TARGET_MATCH use the smallest necessary path; SELECT/CHALLENGE use the full gates.
+
+
 
 1. Inspect the project and discover its real build/compare workflow.
 2. Scout likely first targets with Ghidra.
@@ -219,6 +221,18 @@ When a target reaches an exact match:
 Then inspect neighbouring functions and the final source diff.
 
 Because this project uses legacy GBA compilers and multiple compiler configurations, a function-level match is not the final verification boundary.
+
+## Task routing and failure policy
+
+A known target does not require candidate selection. For a named function, go directly to targeted analysis/matching after verifying the minimum required environment.
+
+Explicit user constraints control later actions: do not edit, build, compare, switch branches or create worktrees when the request forbids them.
+
+Stop on genuine infrastructure blockers such as missing required executables/paths, invalid shell invocation, unavailable project state or infrastructure errors such as `helper_unknown_error`. Do not blindly retry or invent replacement scripts.
+
+Treat source compile errors, linker errors caused by the current hypothesis, partial matches and compare mismatches as experiment evidence. Diagnose and continue one hypothesis at a time.
+
+Keep complete reports/logs on disk. Load only target-relevant records into context; never truncate by position ("first three") when relevance filtering is available.
 
 ## Safety rules
 
