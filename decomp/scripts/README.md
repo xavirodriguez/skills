@@ -148,7 +148,7 @@ The main modes are `explain`, `inspect`, `analyze`, `target-match`, `select` and
 
 Helpers that can perform gated actions accept:
 
-    --policy .decomp-agent/session-policy.json
+    --policy .decomp-agent/session-policy.json --require-policy
 
 A missing policy preserves backward compatibility. An existing policy is enforced.
 
