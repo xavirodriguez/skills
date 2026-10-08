@@ -64,9 +64,14 @@ def report_functions(report):
                 match = float(fuzzy) if fuzzy is not None else 0.0
             except (TypeError, ValueError):
                 match = 0.0
+            function_entry = function.get("address")
             rows.append({
                 "name": str(function.get("name", "")),
-                "address": function.get("address"),
+                "function_entry": function_entry,
+                "function_size": size,
+                "translation_unit": unit.get("name"),
+                # Backward-compatible aliases.
+                "address": function_entry,
                 "size": size,
                 "match_percent": match,
                 "unit": unit.get("name"),
