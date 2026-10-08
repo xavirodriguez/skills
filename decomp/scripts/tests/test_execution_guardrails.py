@@ -116,10 +116,11 @@ class CompareTargetTests(unittest.TestCase):
             find_target(rows, "FS_LoadOverlay")["match_percent"],
             82.38,
         )
-        self.assertEqual(
-            find_target(rows, "FS_LoadOverlay|0x02042540")["size"],
-            0x30,
-        )
+        target = find_target(rows, "FS_LoadOverlay|0x02042540")
+        self.assertEqual(target["size"], 0x30)
+        self.assertEqual(target["function_entry"], "0x02042540")
+        self.assertEqual(target["function_size"], 0x30)
+        self.assertEqual(target["translation_unit"], "_dsd_gap@main_30.o")
 
     def test_complete_is_authoritative_100(self) -> None:
         rows = function_rows({

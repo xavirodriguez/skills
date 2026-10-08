@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from challenge_batch import (
     choose_next,
     init_session,
+    load_session,
+    record_integration,
     record_result,
 )
 
@@ -20,6 +22,9 @@ def evaluation_for(*names: str) -> dict:
         {
             "name": name,
             "address": f"0x{1000 + index:X}",
+            "function_entry": f"0x{1000 + index:X}",
+            "function_size": 512 + index * 64,
+            "translation_unit": "overlay.o",
             "size": 512 + index * 64,
             "match_percent": 0.0,
             "success_score": 90.0 - index,
@@ -39,6 +44,19 @@ def evaluation_for(*names: str) -> dict:
 
 
 class ChallengeBatchTests(unittest.TestCase):
+    def test_v1_session_migrates_without_losing_matched_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.json"
+            path.write_text(json.dumps({
+                "format": "decomp-challenge-session-v1",
+                "matches_completed": 2,
+                "queue": [{"name": "A", "status": "matched"}],
+            }), encoding="utf-8")
+            session = load_session(path)
+            self.assertEqual(session["format"], "decomp-challenge-session-v2")
+            self.assertEqual(session["function_matches_completed"], 2)
+            self.assertEqual(session["integration_matches_completed"], 2)
+            self.assertEqual(session["queue"][0]["integration"]["status"], "legacy-accepted")
     def test_queue_persists_and_selects_expected_value(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "session.json"
@@ -53,7 +71,7 @@ class ChallengeBatchTests(unittest.TestCase):
             candidate = choose_next(session)
             self.assertEqual(candidate["name"], "A")
             loaded = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(loaded["format"], "decomp-challenge-session-v1")
+            self.assertEqual(loaded["format"], "decomp-challenge-session-v2")
 
     def test_no_progress_blocks_after_stagnation_threshold(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -160,7 +178,83 @@ class ChallengeBatchTests(unittest.TestCase):
             )
             self.assertFalse(session["history"][-1]["counted_as_stagnation"])
 
-    def test_exact_match_clears_current_target(self) -> None:
+    def test_exact_match_enters_integration_pending(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.json"
+            session = init_session(
+                path,
+                evaluation_for("A", "B"),
+                tier="tier2",
+                quota=1,
+                max_stagnation=3,
+                replace=True,
+            )
+            session["queue"][0]["status"] = "active"
+            session["current_target"] = session["queue"][0]["key"]
+
+            candidate = record_result(
+                session,
+                target="A",
+                match_before=91.0,
+                match_after=100.0,
+                exact=True,
+                mismatch=None,
+                lesson="Exact authoritative match.",
+                infrastructure_blocker=False,
+            )
+            self.assertEqual(candidate["status"], "integration-pending")
+            self.assertEqual(session["current_target"], candidate["key"])
+            self.assertEqual(session["phase"], "integration")
+            self.assertEqual(session["matches_completed"], 0)
+            self.assertEqual(session["function_matches_completed"], 1)
+
+            integration = {
+                "target": "A",
+                "regions": {
+                    "usa": {
+                        "function": {"entry": "0x3E8", "size": 512},
+                        "object": {"name": "overlay.o", "start": "0x3E8", "end": "0x800"},
+                        "range": {"kind": "delink", "start": "0x3E8", "end": "0x800"},
+                        "padding": {"before": [], "after": []},
+                        "next_boundary": "0x801",
+                        "evidence": ["xMAP", "link map"],
+                        "verification": {"status": "pass", "function_match_percent": 100.0, "command": "ninja check"},
+                    }
+                },
+            }
+            result = record_integration(
+                session,
+                target="A",
+                status="pass",
+                evidence=integration,
+                lesson="Object range verified.",
+            )
+            self.assertEqual(result["status"], "matched")
+            self.assertIsNone(session["current_target"])
+            self.assertEqual(session["matches_completed"], 1)
+            self.assertTrue(session["halted"])
+            self.assertEqual(session["stop_reason"], "quota-reached")
+
+    def test_next_returns_same_target_while_integration_pending(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.json"
+            session = init_session(
+                path,
+                evaluation_for("A", "B"),
+                tier="tier2",
+                quota=0,
+                max_stagnation=3,
+                replace=True,
+            )
+            session["queue"][0]["status"] = "integration-pending"
+            session["current_target"] = session["queue"][0]["key"]
+            session["phase"] = "integration"
+
+            candidate = choose_next(session)
+            self.assertEqual(candidate["name"], "A")
+            self.assertEqual(candidate["status"], "integration-pending")
+
+    def test_exact_match_keeps_target_for_integration(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "session.json"
             session = init_session(
@@ -184,9 +278,11 @@ class ChallengeBatchTests(unittest.TestCase):
                 lesson="Exact authoritative match.",
                 infrastructure_blocker=False,
             )
-            self.assertEqual(candidate["status"], "matched")
-            self.assertEqual(session["matches_completed"], 1)
-            self.assertIsNone(session["current_target"])
+            self.assertEqual(candidate["status"], "integration-pending")
+            self.assertEqual(session["matches_completed"], 0)
+            self.assertEqual(session["function_matches_completed"], 1)
+            self.assertEqual(session["phase"], "integration")
+            self.assertEqual(session["current_target"], candidate["key"])
 
 
 if __name__ == "__main__":

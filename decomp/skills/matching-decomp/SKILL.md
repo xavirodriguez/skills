@@ -269,6 +269,26 @@ Do not repeat failed hypotheses.
 
 Do not impose an arbitrary 15-iteration limit when builds are cheap. Continue while experiments provide evidence, subject to the user's budget and a runaway-loop guard.
 
+## 8. Function match versus object integration
+
+A function reaching 100% in the authoritative function comparison is a `MATCH_EXACT` transition. For legacy linkers and residual/delink objects, the containing object can still fail integration because of padding, range ownership or downstream address drift.
+
+During autonomous workflows:
+
+1. record the exact function match;
+2. enter `INTEGRATION_CHECK` for the same target;
+3. verify the containing object/link layout;
+4. only after integration passes may the target become fully matched and the batch advance.
+
+Keep four coordinates distinct:
+
+    function.entry / function.size
+    translation_unit / object
+    integration.range.start / integration.range.end
+    padding.before / padding.after
+
+Never use a generic `address` field to represent more than one of these concepts. Regional changes such as USA/EUR delink boundaries require independent evidence per region.
+
 ## 8. Validate globally
 
 A scout score is only a prioritization heuristic. It does **not** establish that a function is unmatched, easy, or semantically understood. Confirm all of those with the project's source and comparison data.

@@ -98,12 +98,19 @@ def function_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
             fuzzy = function.get("fuzzy_match_percent")
             complete = function.get("complete")
             match = 100.0 if complete is True else to_float(fuzzy, 0.0)
+            function_entry = function.get("address")
+            function_size = to_int(function.get("size"))
+            translation_unit = unit.get("name")
             rows.append({
                 "name": str(function.get("name", unit.get("name", ""))),
-                "address": function.get("address"),
-                "size": to_int(function.get("size")),
+                "function_entry": function_entry,
+                "function_size": function_size,
+                "translation_unit": translation_unit,
+                # Backward-compatible aliases.
+                "address": function_entry,
+                "size": function_size,
                 "match_percent": match,
-                "unit": unit.get("name"),
+                "unit": translation_unit,
                 "unit_metadata": unit.get("metadata", {}),
             })
     return rows

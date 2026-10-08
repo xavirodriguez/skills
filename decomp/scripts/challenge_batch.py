@@ -14,7 +14,7 @@ from challenge import evaluate, load_json
 from session_policy import require_allowed
 
 
-SESSION_FORMAT = "decomp-challenge-session-v1"
+SESSION_FORMAT = "decomp-challenge-session-v2"
 DEFAULT_MAX_STAGNATION = 3
 
 
@@ -25,7 +25,24 @@ def now_utc() -> str:
 def load_session(path: Path) -> dict[str, Any]:
     if not path.is_file():
         raise FileNotFoundError(f"Session file not found: {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
+    session = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(session, dict):
+        raise ValueError(f"Invalid session object: {path}")
+    if session.get("format") == "decomp-challenge-session-v1":
+        session["format"] = SESSION_FORMAT
+        session.setdefault("phase", "matching")
+        session.setdefault("function_matches_completed", int(session.get("matches_completed") or 0))
+        session.setdefault("integration_matches_completed", int(session.get("matches_completed") or 0))
+        for item in session.get("queue", []):
+            if isinstance(item, dict):
+                item.setdefault("tool_failures", 0)
+                if item.get("status") == "matched":
+                    item.setdefault("integration", {
+                        "status": "legacy-accepted",
+                        "note": "Match predates explicit integration state.",
+                    })
+        session["updated_at"] = now_utc()
+    return session
 
 
 def save_session(path: Path, session: dict[str, Any]) -> None:
@@ -107,6 +124,9 @@ def merge_candidates(
             queue.append(item)
 
         item.update({
+            "function_entry": candidate.get("function_entry", candidate.get("address")),
+            "function_size": candidate.get("function_size", candidate.get("size")),
+            "translation_unit": candidate.get("translation_unit", candidate.get("unit")),
             "size": candidate.get("size"),
             "success_score": candidate.get("success_score"),
             "game_logic_score": candidate.get("game_logic_score"),
@@ -119,16 +139,30 @@ def merge_candidates(
         current_match = float(candidate.get("match_percent") or 0)
         item["last_report_match"] = current_match
         if current_match >= 100.0:
-            item["status"] = "matched"
-            item["matched_at"] = item.get("matched_at") or now_utc()
-        elif item.get("status") == "pending":
-            item["status"] = "pending"
+            if item.get("status") == "matched":
+                item["matched_at"] = item.get("matched_at") or now_utc()
+            elif session.get("current_target") == item.get("key"):
+                item["status"] = "integration-pending"
+                item.setdefault("integration", {"status": "pending"})
+            elif item.get("status") not in {"blocked", "matched"}:
+                item["status"] = "integration-pending"
+                item.setdefault("integration", {"status": "pending"})
+        elif item.get("status") == "integration-pending":
+            item["status"] = "active"
+            session["phase"] = "matching"
 
     # Preserve an active target even if its match percentage moved it outside
     # the selector's zero-match population.
     active = session.get("current_target")
     if active and active in existing:
-        existing[active]["status"] = "active"
+        current = existing[active]
+        if current.get("status") not in {"integration-pending", "matched"}:
+            current["status"] = "active"
+        session["phase"] = (
+            "integration"
+            if current.get("status") == "integration-pending"
+            else "matching"
+        )
 
 
 def init_session(
@@ -153,8 +187,11 @@ def init_session(
         "tier": tier,
         "target_quota": quota,
         "matches_completed": 0,
+        "function_matches_completed": 0,
+        "integration_matches_completed": 0,
         "max_stagnation": max_stagnation,
         "current_target": None,
+        "phase": "matching",
         "halted": False,
         "stop_reason": None,
         "queue": [],
@@ -177,7 +214,7 @@ def choose_next(session: dict[str, Any]) -> dict[str, Any] | None:
             (item for item in queue if item.get("key") == current_key),
             None,
         )
-        if current and current.get("status") == "active":
+        if current and current.get("status") in {"active", "integration-pending"}:
             return current
 
     pending = [
@@ -210,6 +247,7 @@ def claim_next(session: dict[str, Any]) -> dict[str, Any] | None:
 
     candidate["status"] = "active"
     session["current_target"] = candidate["key"]
+    session["phase"] = "matching"
     session["updated_at"] = now_utc()
     return candidate
 
@@ -245,27 +283,39 @@ def record_result(
         candidate["tool_failures"] = int(candidate.get("tool_failures") or 0) + 1
         candidate["last_failure"] = "tool-transport-failure"
     elif exact or match_after >= 100.0:
+        if candidate.get("status") == "integration-pending":
+            raise ValueError(f"Target already awaits integration verification: {target}")
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
         candidate.pop("last_failure", None)
-        candidate["status"] = "matched"
+        candidate["status"] = "integration-pending"
         candidate["stagnation"] = 0
-        candidate["matched_at"] = now_utc()
-        session["matches_completed"] = sum(
-            1 for item in queue if item.get("status") == "matched"
+        candidate["function_matched_at"] = now_utc()
+        candidate["integration_attempts"] = int(candidate.get("integration_attempts") or 0)
+        candidate["integration"] = {
+            "status": "pending",
+            "function_match_percent": match_after,
+            "started_at": now_utc(),
+        }
+        session["function_matches_completed"] = sum(
+            1
+            for item in queue
+            if item.get("status") in {"integration-pending", "matched"}
         )
-        if session.get("current_target") == candidate["key"]:
-            session["current_target"] = None
+        session["phase"] = "integration"
     elif infrastructure_blocker:
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
+        session["phase"] = "halted"
         session["halted"] = True
         session["stop_reason"] = "infrastructure-blocker"
     elif match_after > match_before:
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
+        session["phase"] = "matching"
         candidate.pop("last_failure", None)
         candidate["status"] = "active"
         candidate["stagnation"] = 0
     else:
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
+        session["phase"] = "matching"
         candidate.pop("last_failure", None)
         candidate["status"] = "active"
         candidate["stagnation"] = int(candidate.get("stagnation") or 0) + 1
@@ -301,6 +351,84 @@ def record_result(
         session["stop_reason"] = "quota-reached"
     return candidate
 
+
+def record_integration(
+    session: dict[str, Any],
+    *,
+    target: str,
+    status: str,
+    evidence: dict[str, Any] | None,
+    lesson: str | None,
+) -> dict[str, Any]:
+    from integration_check import validate_document
+
+    queue = session.get("queue", [])
+    candidate = next(
+        (
+            item
+            for item in queue
+            if item.get("name") == target or item.get("key") == target
+        ),
+        None,
+    )
+    if candidate is None:
+        raise ValueError(f"Target is not present in session queue: {target}")
+    if candidate.get("status") != "integration-pending":
+        raise ValueError(f"Target is not awaiting integration verification: {target}")
+    if status not in {"pass", "mismatch", "infrastructure-blocker"}:
+        raise ValueError(f"Unsupported integration status: {status}")
+    normalized = None
+    if status != "infrastructure-blocker":
+        if evidence is None:
+            raise ValueError("Integration result requires evidence JSON")
+        normalized = validate_document(evidence, target)
+
+    now = now_utc()
+    candidate["integration_attempts"] = int(candidate.get("integration_attempts") or 0) + 1
+    candidate["integration"] = {
+        "status": "passed" if status == "pass" else status,
+        "evidence": normalized,
+        "lesson": lesson,
+        "recorded_at": now,
+    }
+
+    if status == "pass":
+        candidate["status"] = "matched"
+        candidate["matched_at"] = now
+        session["current_target"] = None
+        session["phase"] = "matching"
+        session["integration_matches_completed"] = sum(
+            1 for item in queue if item.get("status") == "matched"
+        )
+        session["matches_completed"] = session["integration_matches_completed"]
+    elif status == "mismatch":
+        candidate["status"] = "integration-pending"
+        session["phase"] = "integration"
+    else:
+        candidate["status"] = "integration-pending"
+        session["phase"] = "halted"
+        session["halted"] = True
+        session["stop_reason"] = "integration-infrastructure-blocker"
+
+    session.setdefault("history", []).append({
+        "timestamp": now,
+        "phase": "integration",
+        "target": candidate.get("name"),
+        "status": "integration-passed" if status == "pass" else status,
+        "lesson": lesson,
+        "counted_as_stagnation": False,
+        "counted_as_attempt": False,
+        "evidence": normalized,
+    })
+    session["updated_at"] = now
+
+    quota = int(session.get("target_quota") or 0)
+    if status == "pass" and quota > 0 and session["matches_completed"] >= quota:
+        session["halted"] = True
+        session["phase"] = "halted"
+        session["stop_reason"] = "quota-reached"
+
+    return candidate
 
 def refresh_report(
     session_path: Path,
@@ -396,6 +524,9 @@ def compact(session: dict[str, Any]) -> dict[str, Any]:
     queue = session.get("queue", [])
     pending = [x for x in queue if x.get("status") == "pending"]
     active = [x for x in queue if x.get("status") == "active"]
+    integration_pending = [
+        x for x in queue if x.get("status") == "integration-pending"
+    ]
     matched = [x for x in queue if x.get("status") == "matched"]
     blocked = [x for x in queue if x.get("status") == "blocked"]
     return {
@@ -403,12 +534,16 @@ def compact(session: dict[str, Any]) -> dict[str, Any]:
         "tier": session.get("tier"),
         "target_quota": session.get("target_quota"),
         "matches_completed": session.get("matches_completed"),
+        "function_matches_completed": session.get("function_matches_completed"),
+        "integration_matches_completed": session.get("integration_matches_completed"),
         "current_target": session.get("current_target"),
+        "phase": session.get("phase"),
         "halted": session.get("halted"),
         "stop_reason": session.get("stop_reason"),
         "counts": {
             "pending": len(pending),
             "active": len(active),
+            "integration_pending": len(integration_pending),
             "matched": len(matched),
             "blocked": len(blocked),
         },
@@ -479,6 +614,23 @@ def main() -> int:
         default=Path(".decomp-agent/session-policy.json"),
     )
     record.add_argument("--require-policy", action="store_true")
+
+    integration_record = sub.add_parser("integration-record")
+    integration_record.add_argument(
+        "--session",
+        type=Path,
+        default=Path(".decomp-agent/challenge/session.json"),
+    )
+    integration_record.add_argument("--target", required=True)
+    integration_record.add_argument(
+        "--status",
+        choices=("pass", "mismatch", "infrastructure-blocker"),
+        required=True,
+    )
+    integration_record.add_argument("--evidence", type=Path)
+    integration_record.add_argument("--lesson", default="")
+    integration_record.add_argument("--policy", type=Path, default=Path(".decomp-agent/session-policy.json"))
+    integration_record.add_argument("--require-policy", action="store_true")
 
     refresh = sub.add_parser("refresh")
     refresh.add_argument("--session", type=Path, default=Path(".decomp-agent/challenge/session.json"))
@@ -601,6 +753,39 @@ def main() -> int:
         print(json.dumps(candidate, indent=2, sort_keys=True))
         return 0
 
+    if args.command == "integration-record":
+        try:
+            require_allowed(
+                args.policy,
+                "compare",
+                require_file=args.require_policy,
+            )
+        except (OSError, ValueError, PermissionError) as exc:
+            parser.error(str(exc))
+
+        evidence = None
+        if args.status != "infrastructure-blocker":
+            if not args.evidence or not args.evidence.is_file():
+                parser.error("--evidence is required unless integration is blocked")
+            try:
+                evidence = load_json(args.evidence)
+            except (OSError, json.JSONDecodeError) as exc:
+                parser.error(f"invalid integration evidence: {exc}")
+
+        candidate = record_integration(
+            session,
+            target=args.target,
+            status=args.status,
+            evidence=evidence,
+            lesson=args.lesson or None,
+        )
+        save_session(args.session, session)
+        print(json.dumps(
+            {"candidate": candidate, "session": compact(session)},
+            indent=2,
+            sort_keys=True,
+        ))
+        return 0
     if args.command == "refresh":
         try:
             require_allowed(
