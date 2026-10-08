@@ -422,12 +422,14 @@ Example on PH:
       --target <function> \
       --shell powershell \
       --build-command "ninja" \
-      --compare-command ".\\objdiff-cli.exe diff -p . <function>" \
+      --compare-command "<python> ../../scripts/compare_target.py --project . --target <function> --objdiff-cli .\\objdiff-cli.exe" \
       --compare-on-build-failure \
       --allow-build-failure-if-compare-passes \
+      --policy .decomp-agent/session-policy.json \
+      --require-policy \
       --force
 
-The build/compare logs record both the compiler exit code and the authoritative function comparison result.
+The compare helper generates/reads a machine-readable objdiff report with interactive stdin disabled. The build/compare logs record both the compiler exit code and the authoritative function comparison result.
 
 
 1. Run ../../scripts/inspect_project.py and save its JSON as the project baseline.
