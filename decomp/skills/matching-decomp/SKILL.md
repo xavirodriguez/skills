@@ -266,51 +266,16 @@ Pay special attention to:
 - compiler-specific struct layout.
 
 
-## Failure classification and fast-fail policy
-
-Distinguish environment failures from experiment failures.
-
-### Infrastructure failures
-
-Examples:
-- executable/tool is missing;
-- required path or project file does not exist;
-- helper reports an infrastructure error such as `helper_unknown_error`;
-- shell invocation is invalid for the detected shell;
-- required environment state is unavailable.
-
-Policy:
-1. Do not blindly retry the same command.
-2. Do not switch shells or invent alternate command syntax.
-3. Do not write inline Python/Node/Bash to replace a repository helper.
-4. Report the exact command and error, then stop when the blocker prevents the current mode.
-
-For a missing path, verify the path only with a read-only existence check. If it is genuinely absent, stop instead of guessing a replacement path.
-
-### Experiment failures
-
-These are not automatic workflow blockers:
-- C/C++ compile errors;
-- linker errors caused by the current source hypothesis;
-- partial objdiff matches;
-- changed registers, branches or stack layout;
-- expected full-ROM/hash failure after required comparison artifacts were produced.
-
-Analyze the failure as evidence, revise one source-level hypothesis, and compare again within the user's action budget.
-
-Never treat a build error caused by the proposed source change as an environment blocker.
 
 ## 10. Failure handling
 
-When C and assembly disagree:
+Classify failures before deciding whether to stop.
 
-1. Trust the instruction stream.
-2. Inspect P-code for the disputed operation.
-3. Check ABI and callers/callees.
-4. Test the smallest source-level hypothesis.
-5. Recompile and compare.
+**Infrastructure blocker:** missing executable/path, invalid shell invocation, unavailable project state, or infrastructure error such as `helper_unknown_error`. Do not blindly retry, change shells, guess paths, or replace helpers with ad-hoc inline scripts. For a missing path, perform one read-only existence check; if it is absent, stop.
 
-If the environment cannot build or compare, report the exact blocker. Never claim a match from semantic similarity alone.
+**Experiment failure:** compiler error, linker error caused by the current source hypothesis, partial match, or compare mismatch. Treat it as evidence, diagnose the first relevant mismatch, change one source hypothesis, and continue within the user's action budget.
+
+A build failure caused by the proposed source change is not automatically an environment blocker.
 
 
 ## Context conservation
