@@ -6,6 +6,11 @@ compatibility: OpenCode and Codex
 
 # Phantom Hourglass Challenge
 
+
+## Helper path resolution
+
+Helper paths such as `../../scripts/<helper>` are relative to the directory containing this `SKILL.md`. Resolve them against the skill base directory before passing them to the shell or Ghidra. Do not rely on the target project's current working directory.
+
 ## Request routing
 
 Use the challenge pipeline only when the user asks to **select, solve, or verify a challenge tier**.
