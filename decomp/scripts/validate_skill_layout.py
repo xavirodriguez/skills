@@ -61,7 +61,7 @@ def validate_skill(path: Path, skills_root: Path) -> list[str]:
         errors.append(f"{path}: example-only absolute helper path remains")
 
     for relative in re.findall(
-        r"(?<![A-Za-z0-9_.-])\.\./\.\./scripts/[A-Za-z0-9_.-]+", content
+        r"(?<![A-Za-z0-9_.-])\.\./\.\./scripts/[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*", content
     ):
         helper = (path.parent / relative).resolve()
         if not helper.is_file():
