@@ -88,6 +88,9 @@ Use exact addresses where possible. Never invent an address delta.
 
 ## 5. Select one function
 
+For challenge work, delegate objective selection to ph-challenge and its unified challenge.py engine. For normal decompilation, select a concrete function only after the reference/XMAP evidence gates.
+
+
 Choose one target only after the gates.
 
 A valid target must:
