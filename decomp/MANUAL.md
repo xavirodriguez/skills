@@ -356,3 +356,22 @@ For functions with no address encoded in their name, the analyzer can still pres
 The PH source tree uses explicit `// non-matching` markers. Their absence is useful project evidence, but it is not an exact-match guarantee.
 
 When `objdiff`/build reports from the reference project are available, prefer those results over source comments. Never let the reference project override contradictory target ROM, target XMAP or target Ghidra evidence.
+
+
+## Session policy and experiment knowledge
+
+Autonomous workflows can persist their allowed actions in:
+
+    .decomp-agent/session-policy.json
+
+Initialize a mode with:
+
+    python3 decomp/scripts/session_policy.py init --mode target-match --force
+
+The helpers enforce existing policy files. `run_match.py` guards build/compare, while challenge selectors guard selection.
+
+The global hypothesis ledger is:
+
+    .decomp-agent/hypotheses.jsonl
+
+Use `decomp/scripts/hypothesis_knowledge.py` to retrieve relevant previous hypotheses across functions. The ledger includes match deltas, mismatch families, Git state, source diffs and a generated lesson.
