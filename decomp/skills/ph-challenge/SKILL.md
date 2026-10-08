@@ -34,6 +34,62 @@ For autonomous selection, use the full objective pipeline and keep complete repo
 
 Use this skill when the goal is the decomp challenge, not merely general PH decompilation.
 
+## Autonomous batch controller
+
+When the user asks for autonomous solving, multiple matches, a batch, or to continue with the next function after a match, use the persistent batch controller instead of treating the challenge as a single-target task.
+
+Initialize or resume the queue:
+
+    <python> ../../scripts/challenge_batch.py init --project . --report .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --reference .decomp-agent/reference/ph-analysis.json --tier tier2 --quota 0 --max-stagnation 3 --policy .decomp-agent/session-policy.json --require-policy
+
+`--quota 0` means continue until there are no eligible candidates or a real blocker. Use a positive quota only when the user explicitly requests a bounded number of matches.
+
+Get the next target:
+
+    <python> ../../scripts/challenge_batch.py next --session .decomp-agent/challenge/session.json --claim
+
+For the active target, follow the normal matching-decomp loop. Run exactly one source hypothesis/change per iteration, then use `run_match.py` with the project's authoritative build and compare commands and the active session policy.
+
+After each experiment, record the authoritative result:
+
+    <python> ../../scripts/challenge_batch.py record --session .decomp-agent/challenge/session.json --target <candidate> --before <match-before> --after <match-after> [--exact] [--mismatch "<first mismatch>"] [--lesson "<compact lesson>"]
+
+Rules:
+- An exact match clears the active target and increments `matches_completed`.
+- A positive match delta resets stagnation.
+- A non-improving experiment increments stagnation.
+- When stagnation reaches the configured threshold, the candidate is automatically marked `blocked` and the controller can move to the next candidate.
+- Infrastructure blockers halt the session; they must not be silently converted into candidate skips.
+- A candidate that becomes partial after an edit remains the active target until it reaches exact match or is blocked. Do not lose it merely because it no longer satisfies the original zero-match selector gate.
+
+After every exact match, regenerate the authoritative report, then resync the queue:
+
+    <python> ../../scripts/challenge_batch.py refresh --session .decomp-agent/challenge/session.json --project . --refresh-command "<authoritative report/build command>" --report .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --reference .decomp-agent/reference/ph-analysis.json --policy .decomp-agent/session-policy.json --require-policy
+
+This refresh is mandatory after an exact match because the remaining zero-match population, P75 threshold and candidate ranking may have changed.
+
+Then claim the next candidate and continue without asking the user again:
+
+    <python> ../../scripts/challenge_batch.py next --session .decomp-agent/challenge/session.json --claim
+
+Do not use a fixed total experiment count as the stopping condition. Stop because:
+- the requested quota is reached;
+- no eligible candidates remain;
+- the current candidate is stagnant and has been auto-blocked, after which the next candidate is selected;
+- or a real infrastructure blocker halts the session.
+
+## Candidate ranking
+
+The selector exposes `expected_value_score` in addition to `success_score`, `game_logic_score` and `complexity_score`.
+
+`expected_value_score` is a transparent heuristic, not a probability. It favors candidates that combine higher estimated success potential, stronger game-logic evidence, lower estimated matching complexity, and enough code size to make the effort worthwhile.
+
+Within the eligible set, use expected value as the primary ordering signal. Do not blindly choose the largest function.
+
+## Evidence and lesson reuse
+
+Before deep analysis of each candidate, prepare/load its candidate pack so prior lessons are surfaced automatically. Reuse prior hypotheses only as evidence; prefer lessons with matching mismatch families or similar signatures, and never copy an old source change blindly.
+
 ## 1. Challenge gate: decide admissibility before heavy work
 
 For an explicit Tier request, check the minimum admission evidence before running a clean rebuild, global scout, published-progress lookup, or other expensive baseline work.
