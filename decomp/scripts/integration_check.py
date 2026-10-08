@@ -52,12 +52,19 @@ def validate_region(name: str, region: Any) -> dict[str, Any]:
     verification_status = str(verification.get("status") or "").lower()
     if verification_status != "pass":
         raise ValueError(f"region {name!r} authoritative verification is not pass")
-    verification_match = float(verification.get("function_match_percent"))
+    try:
+        verification_match = float(verification.get("function_match_percent"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"region {name!r} needs numeric function match verification") from exc
     if verification_match < 100.0:
         raise ValueError(f"region {name!r} authoritative function match is below 100%")
     verification_command = str(verification.get("command") or "").strip()
     if not verification_command:
         raise ValueError(f"region {name!r} needs authoritative verification command")
+
+    object_name = str(obj.get("name") or "").strip()
+    if not object_name:
+        raise ValueError(f"region {name!r} needs object name")
 
     function_entry = parse_int(function.get("entry"), f"{name}.function.entry")
     function_size = parse_int(function.get("size"), f"{name}.function.size")
@@ -111,7 +118,7 @@ def validate_region(name: str, region: Any) -> dict[str, Any]:
             "end": function_end,
         },
         "object": {
-            "name": str(obj.get("name") or ""),
+            "name": object_name,
             "start": object_start,
             "end": object_end,
         },
