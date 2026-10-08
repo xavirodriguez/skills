@@ -122,6 +122,19 @@ class CompareTargetTests(unittest.TestCase):
         self.assertEqual(target["function_size"], 0x30)
         self.assertEqual(target["translation_unit"], "_dsd_gap@main_30.o")
 
+    def test_missing_match_percent_is_not_zero(self) -> None:
+        rows = function_rows({
+            "units": [{
+                "functions": [{
+                    "name": "incomplete",
+                    "address": "0x200",
+                    "size": 32,
+                }],
+            }],
+        })
+        self.assertIsNone(rows[0]["match_percent"])
+        self.assertFalse(rows[0]["match_available"])
+
     def test_complete_is_authoritative_100(self) -> None:
         rows = function_rows({
             "units": [{
