@@ -224,6 +224,7 @@ def record_result(
     mismatch: str | None,
     lesson: str | None,
     infrastructure_blocker: bool,
+    tool_transport_failure: bool = False,
 ) -> dict[str, Any]:
     queue = session.get("queue", [])
     candidate = next(
@@ -240,7 +241,10 @@ def record_result(
     candidate["last_lesson"] = lesson
     candidate["last_attempt_at"] = now_utc()
 
-    if exact or match_after >= 100.0:
+    if tool_transport_failure:
+        candidate["status"] = "active"
+        candidate["last_failure"] = "tool-transport-failure"
+    elif exact or match_after >= 100.0:
         candidate["status"] = "matched"
         candidate["stagnation"] = 0
         candidate["matched_at"] = now_utc()
@@ -275,8 +279,9 @@ def record_result(
         "exact": exact,
         "mismatch": mismatch,
         "lesson": lesson,
-        "status": candidate.get("status"),
+        "status": "tool-transport-failure" if tool_transport_failure else candidate.get("status"),
         "stagnation": candidate.get("stagnation"),
+        "counted_as_stagnation": not tool_transport_failure,
     })
     session["updated_at"] = now_utc()
     session["matches_completed"] = sum(
@@ -452,6 +457,7 @@ def main() -> int:
     record.add_argument("--mismatch", default="")
     record.add_argument("--lesson", default="")
     record.add_argument("--infrastructure-blocker", action="store_true")
+    record.add_argument("--tool-transport-failure", action="store_true", help="Record tooling failure without consuming stagnation.")
     record.add_argument("--project", type=Path, default=Path("."))
     record.add_argument("--refresh-command", default="")
     record.add_argument("--report", type=Path)
@@ -494,6 +500,8 @@ def main() -> int:
 
     if hasattr(args, "refresh_timeout") and args.refresh_timeout <= 0:
         parser.error("--refresh-timeout must be > 0")
+    if args.command == "record" and sum(bool(value) for value in (args.exact, args.infrastructure_blocker, args.tool_transport_failure)) > 1:
+        parser.error("--exact, --infrastructure-blocker and --tool-transport-failure are mutually exclusive")
 
     if args.command in {"init", "sync"}:
         try:
@@ -560,6 +568,7 @@ def main() -> int:
             mismatch=args.mismatch or None,
             lesson=args.lesson or None,
             infrastructure_blocker=args.infrastructure_blocker,
+            tool_transport_failure=args.tool_transport_failure,
         )
         save_session(args.session, session)
 
