@@ -5,11 +5,29 @@ description: Orchestrate Phantom Hourglass matching decompilation on Windows or 
 
 # Phantom Hourglass Decompilation
 
+## Task routing
+
+Choose the smallest workflow that satisfies the request before starting the pipeline.
+
+- **EXPLAIN / INSPECT:** read the requested file/symbol and answer. Do not run preflight, reference, XMAP or candidate gates.
+- **ANALYZE:** for a known function/address, run only the checks required for Ghidra/analysis. Do not run global selection gates.
+- **TARGET_MATCH:** when the user names the function, skip candidate selection, reference gate and XMAP gate unless one is required to resolve the target. Verify the real build/compare command before matching.
+- **SELECT / CHALLENGE:** use the full preflight -> inspection -> reference/XMAP -> candidate pipeline.
+
+Never let activation of `ph-decomp` override explicit user constraints. Track READ/ANALYZE/EDIT/BUILD/COMPARE/SELECT permissions for the session.
+
+Do not create worktrees, reset files, switch branches, or discard user changes unless the workflow explicitly calls for isolation and the user has authorized that mutation.
+
+
 Use this skill as the entry point for Zelda: Phantom Hourglass. It orchestrates reference-decomp, xmap-analysis and matching-decomp.
 
 Do not start by selecting an incomplete objdiff unit. Establish the environment and run the reference/XMAP gates first.
 
-## 1. Preflight first
+## 1. Preflight when the selected mode requires it
+
+For **SELECT**, **CHALLENGE**, and **TARGET_MATCH**, establish the minimum required environment before helpers or build/compare commands.
+
+For **EXPLAIN**, **INSPECT**, and targeted read-only analysis, do not run the full PH preflight unless the requested analysis actually needs it.
 
 Use the native Windows check when Python may be unavailable:
 
@@ -50,7 +68,9 @@ For PH, identify:
 
 Never invent build or compare commands.
 
-## 3. Reference gate — mandatory
+## 3. Reference gate — mandatory for SELECT/CHALLENGE
+
+For **TARGET_MATCH** with a concrete user-supplied function, skip this gate unless reference evidence is required to resolve or interpret the target.
 
 Locate the local clone of:
 
@@ -75,6 +95,8 @@ The candidate gate is a hard selection filter:
 Do not equate an incomplete objdiff unit with every function in that unit being unmatched.
 
 ## 4. XMAP/Ghidra correlation
+
+For **SELECT/CHALLENGE**, run the full correlation gate. For **TARGET_MATCH** or **ANALYZE**, use XMAP only when it materially helps resolve the supplied target.
 
 The XMAP was parsed in step 2. If a Ghidra project is available, use Ghidra's supported headless API:
 
@@ -127,6 +149,20 @@ For the harness:
     <python> <skills>\decomp\scripts\run_match.py --project . --target <function> --shell powershell --build-command "ninja arm9" --compare-command "ninja report check" --dry-run
 
 Do not generate `&&`, `||`, Bash heredocs, or `python3 -c` inspection snippets in PowerShell.
+
+## Failure classification
+
+Stop on genuine environment blockers: missing required executables/paths, invalid shell invocation, unavailable project state, or infrastructure errors such as `helper_unknown_error`.
+
+Do not blindly retry failed infrastructure commands, switch shell syntax, or create ad-hoc inline scripts to replace a helper.
+
+Treat compiler errors, linker errors caused by the current source hypothesis, partial matches, and compare mismatches as experiment evidence. Diagnose them and continue one hypothesis at a time within the user's action budget.
+
+## Context discipline
+
+Write large JSON results to `.decomp-agent/` and keep stdout concise. Read only the records relevant to the active target or current gate. Do not discard data by taking the first three or first ten results; filter by target identity instead.
+
+Load `ph-challenge`, `matching-decomp`, `reference-decomp`, or `xmap-analysis` instructions only when the selected workflow reaches that phase.
 
 ## 8. Stop conditions
 
