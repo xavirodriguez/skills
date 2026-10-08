@@ -18,9 +18,9 @@ class UnifiedChallengeTests(unittest.TestCase):
             "version": 2,
             "units": [
                 {"name": "u", "functions": [
-                    {"name": "A", "size": 256, "address": "0x1000"},
-                    {"name": "B", "size": 300, "address": "0x1100"},
-                    {"name": "C", "size": 400, "address": "0x1200"},
+                    {"name": "A", "size": 256, "address": "0x1000", "fuzzy_match_percent": 0},
+                    {"name": "B", "size": 300, "address": "0x1100", "fuzzy_match_percent": 0},
+                    {"name": "C", "size": 400, "address": "0x1200", "fuzzy_match_percent": 0},
                     {"name": "P", "size": 900, "address": "0x1300", "fuzzy_match_percent": 50},
                     {"name": "M", "size": 1000, "address": "0x1400", "fuzzy_match_percent": 100},
                 ]},
@@ -44,7 +44,7 @@ class UnifiedChallengeTests(unittest.TestCase):
                 "name": "u",
                 "functions": [
                     {"name": "Partial", "size": 900, "address": "0x2000", "fuzzy_match_percent": 1},
-                    {"name": "Zero", "size": 900, "address": "0x2100"},
+                    {"name": "Zero", "size": 900, "address": "0x2100", "fuzzy_match_percent": 0},
                 ],
             }],
         }
@@ -69,6 +69,7 @@ class UnifiedChallengeTests(unittest.TestCase):
                     "name": "UpdateEnemy",
                     "size": 1200,
                     "address": "0x3000",
+                    "fuzzy_match_percent": 0,
                 }],
             }],
         }
@@ -100,6 +101,7 @@ class UnifiedChallengeTests(unittest.TestCase):
                     "name": "GetHealth",
                     "size": 800,
                     "address": "0x4000",
+                    "fuzzy_match_percent": 0,
                 }],
             }],
         }
