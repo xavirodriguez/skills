@@ -271,6 +271,12 @@ def record_result(
     )
     if candidate is None:
         raise ValueError(f"Target is not present in session queue: {target}")
+    current_target = session.get("current_target")
+    if current_target and candidate.get("key") != current_target:
+        raise ValueError(
+            f"Target is not the current batch target: {target}; "
+            f"current_target={current_target}"
+        )
 
     candidate["match_before"] = match_before
     candidate["match_after"] = match_after
@@ -373,6 +379,12 @@ def record_integration(
     )
     if candidate is None:
         raise ValueError(f"Target is not present in session queue: {target}")
+    current_target = session.get("current_target")
+    if current_target and candidate.get("key") != current_target:
+        raise ValueError(
+            f"Target is not the current batch target: {target}; "
+            f"current_target={current_target}"
+        )
     if candidate.get("status") != "integration-pending":
         raise ValueError(f"Target is not awaiting integration verification: {target}")
     if status not in {"pass", "mismatch", "infrastructure-blocker"}:
