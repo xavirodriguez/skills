@@ -252,6 +252,48 @@ def claim_next(session: dict[str, Any]) -> dict[str, Any] | None:
     return candidate
 
 
+def skip_target(
+    session: dict[str, Any],
+    *,
+    target: str,
+    reason: str,
+    force: bool = False,
+) -> dict[str, Any]:
+    queue = session.get("queue", [])
+    candidate = next(
+        (item for item in queue if item.get("name") == target or item.get("key") == target),
+        None,
+    )
+    if candidate is None:
+        raise ValueError(f"Target is not present in session queue: {target}")
+    if (
+        candidate.get("key") == session.get("current_target")
+        and candidate.get("status") in {"active", "integration-pending"}
+        and not force
+    ):
+        raise ValueError(
+            "Refusing to skip current target without force. "
+            "Autonomous batches must resolve the current target before advancing."
+        )
+
+    candidate["status"] = "blocked"
+    candidate["blocked_reason"] = reason
+    candidate["blocked_at"] = now_utc()
+    if candidate.get("key") == session.get("current_target"):
+        session["current_target"] = None
+        session["phase"] = "matching"
+    session.setdefault("history", []).append({
+        "timestamp": now_utc(),
+        "target": candidate.get("name"),
+        "status": "manually-blocked",
+        "reason": reason,
+        "forced": force,
+        "counted_as_stagnation": False,
+        "counted_as_attempt": False,
+    })
+    session["updated_at"] = now_utc()
+    return candidate
+
 def record_result(
     session: dict[str, Any],
     *,
@@ -827,27 +869,15 @@ def main() -> int:
         return code
 
     if args.command == "skip":
-        candidate = next(
-            (item for item in session.get("queue", []) if item.get("name") == args.target),
-            None,
-        )
-        if candidate is None:
-            raise SystemExit(f"Target not found: {args.target}")
-        if (
-            candidate.get("key") == session.get("current_target")
-            and candidate.get("status") in {"active", "integration-pending"}
-            and not args.force
-        ):
-            raise SystemExit(
-                "Refusing to skip current target without --force. "
-                "Autonomous batches must resolve the current target before advancing."
+        try:
+            candidate = skip_target(
+                session,
+                target=args.target,
+                reason=args.reason,
+                force=args.force,
             )
-        candidate["status"] = "blocked"
-        candidate["blocked_reason"] = args.reason
-        candidate["blocked_at"] = now_utc()
-        if session.get("current_target") == candidate.get("key"):
-            session["current_target"] = None
-        session["updated_at"] = now_utc()
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
         save_session(args.session, session)
         print(json.dumps(candidate, indent=2, sort_keys=True))
         return 0
