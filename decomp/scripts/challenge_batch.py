@@ -521,6 +521,9 @@ def compact(session: dict[str, Any]) -> dict[str, Any]:
     queue = session.get("queue", [])
     pending = [x for x in queue if x.get("status") == "pending"]
     active = [x for x in queue if x.get("status") == "active"]
+    integration_pending = [
+        x for x in queue if x.get("status") == "integration-pending"
+    ]
     matched = [x for x in queue if x.get("status") == "matched"]
     blocked = [x for x in queue if x.get("status") == "blocked"]
     return {
@@ -528,12 +531,16 @@ def compact(session: dict[str, Any]) -> dict[str, Any]:
         "tier": session.get("tier"),
         "target_quota": session.get("target_quota"),
         "matches_completed": session.get("matches_completed"),
+        "function_matches_completed": session.get("function_matches_completed"),
+        "integration_matches_completed": session.get("integration_matches_completed"),
         "current_target": session.get("current_target"),
+        "phase": session.get("phase"),
         "halted": session.get("halted"),
         "stop_reason": session.get("stop_reason"),
         "counts": {
             "pending": len(pending),
             "active": len(active),
+            "integration_pending": len(integration_pending),
             "matched": len(matched),
             "blocked": len(blocked),
         },
@@ -604,6 +611,23 @@ def main() -> int:
         default=Path(".decomp-agent/session-policy.json"),
     )
     record.add_argument("--require-policy", action="store_true")
+
+    integration_record = sub.add_parser("integration-record")
+    integration_record.add_argument(
+        "--session",
+        type=Path,
+        default=Path(".decomp-agent/challenge/session.json"),
+    )
+    integration_record.add_argument("--target", required=True)
+    integration_record.add_argument(
+        "--status",
+        choices=("pass", "mismatch", "infrastructure-blocker"),
+        required=True,
+    )
+    integration_record.add_argument("--evidence", type=Path)
+    integration_record.add_argument("--lesson", default="")
+    integration_record.add_argument("--policy", type=Path, default=Path(".decomp-agent/session-policy.json"))
+    integration_record.add_argument("--require-policy", action="store_true")
 
     refresh = sub.add_parser("refresh")
     refresh.add_argument("--session", type=Path, default=Path(".decomp-agent/challenge/session.json"))
@@ -726,6 +750,39 @@ def main() -> int:
         print(json.dumps(candidate, indent=2, sort_keys=True))
         return 0
 
+    if args.command == "integration-record":
+        try:
+            require_allowed(
+                args.policy,
+                "compare",
+                require_file=args.require_policy,
+            )
+        except (OSError, ValueError, PermissionError) as exc:
+            parser.error(str(exc))
+
+        evidence = None
+        if args.status != "infrastructure-blocker":
+            if not args.evidence or not args.evidence.is_file():
+                parser.error("--evidence is required unless integration is blocked")
+            try:
+                evidence = load_json(args.evidence)
+            except (OSError, json.JSONDecodeError) as exc:
+                parser.error(f"invalid integration evidence: {exc}")
+
+        candidate = record_integration(
+            session,
+            target=args.target,
+            status=args.status,
+            evidence=evidence,
+            lesson=args.lesson or None,
+        )
+        save_session(args.session, session)
+        print(json.dumps(
+            {"candidate": candidate, "session": compact(session)},
+            indent=2,
+            sort_keys=True,
+        ))
+        return 0
     if args.command == "refresh":
         try:
             require_allowed(
