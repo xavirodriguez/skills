@@ -439,6 +439,10 @@ def main() -> int:
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered + "\n", encoding="utf-8")
+        if args.full_output:
+            print(rendered)
+        else:
+            print(json.dumps(compact_summary(result), indent=2, sort_keys=True))
     else:
         print(rendered)
     return 0
