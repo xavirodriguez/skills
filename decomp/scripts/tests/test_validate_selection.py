@@ -34,7 +34,7 @@ class SelectionValidationTests(unittest.TestCase):
                     "scout": {"sha256": scout_hash},
                 },
             }), encoding="utf-8")
-            result = validate(selection and json.loads(selection.read_text(encoding="utf-8")), report=report, scout=scout, reference=None)
+            result = validate(json.loads(selection.read_text(encoding="utf-8")), report=report, scout=scout, reference=None)
             self.assertEqual(result["status"], "valid")
 
     def test_rejects_stale_selection(self) -> None:
