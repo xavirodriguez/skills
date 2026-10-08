@@ -384,3 +384,35 @@ Before autonomous experiments:
 - never treat a heuristic scout score as proof;
 - never treat a parser result as authoritative when the project provides a stronger compare result;
 - for GBA/agbcc, run the project's full verification after a function-level match.
+
+
+## Autonomous multi-target matching
+
+When the user asks for multiple exact matches or autonomous continuation, use the PH challenge batch controller when applicable, or apply the same state-machine pattern for other projects:
+
+    queue -> inspect -> hypothesize -> one edit -> build/compare -> record
+      ^                                                     |
+      |-------------------- refresh/select -----------------|
+
+Do not preselect a static list and work through it unchanged. After every exact match, refresh the authoritative report and rescore the remaining candidates because match status, population thresholds and translation-unit conditions may have changed.
+
+For each target:
+- keep one active target until it reaches exact match or is explicitly blocked;
+- reuse relevant evidence and hypothesis lessons automatically;
+- treat positive match delta as progress and reset stagnation;
+- after repeated non-improving experiments reach the configured stagnation threshold, mark the candidate blocked and select the next target;
+- never convert an infrastructure blocker into a candidate skip.
+
+The batch controller is responsible for queue/state transitions. The LLM remains responsible for semantic reasoning and source hypotheses. Do not make the controller synthesize or edit C/C++ itself.
+
+## 13. PyGhidra launcher selection
+
+Before launching a Python evidence collector, determine which runtime it requires:
+
+    <python> ../../scripts/ghidra_launcher.py script-runtime --script <collector.py>
+    <python> ../../scripts/ghidra_launcher.py detect --ghidra-home <Ghidra>
+
+Use analyzeHeadless for repository scripts that are ordinary Ghidra headless scripts. Use Ghidra's pyghidraRun.bat -H / pyghidraRun -H only for collectors marked with decomp-runtime: pyghidra or importing pyghidra.
+
+Do not treat a failed PyGhidra launch as a reason to invent a pipe/Java transport unless the runtime is actually required and the launcher has been independently validated.
+
