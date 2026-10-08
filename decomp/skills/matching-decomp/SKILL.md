@@ -92,6 +92,24 @@ The goal is not merely to understand a function. The goal is to reproduce the ta
 
 **Success criterion:** the project's authoritative comparison reports an exact match.
 
+## SELECT protocol
+
+SELECT is read-only ranking. It must not edit source, build, compare functions, or write challenge results.
+
+Use this order:
+
+    authoritative report
+      -> verify match data availability
+      -> fresh Ghidra/XMAP evidence
+      -> challenge.py ranking
+      -> optional artifact freshness validation
+      -> present ranked candidates
+
+Do not read plugin cache files such as `.codex/plugins/cache/.../SKILL.md` as project evidence. The active skill is already loaded; cache layout is an implementation detail.
+
+When an existing selection artifact is reused, validate its provenance first with `validate_selection.py`. An artifact without supported provenance, or with a mismatching SHA-256 for any supplied input, is stale and must not be treated as authoritative.
+
+Missing `fuzzy_match_percent` is `unknown`, not zero. Unknown match data cannot enter the zero-match population or a challenge tier.
 ## Execution guardrails
 
 Autonomous matching must use the repository helpers as the execution boundary. These are hard rules, not preferences:
