@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from challenge import evaluate, percentile75
+from challenge import compact_summary, evaluate, percentile75
 
 
 class UnifiedChallengeTests(unittest.TestCase):
@@ -113,6 +113,31 @@ class UnifiedChallengeTests(unittest.TestCase):
         result = evaluate(report, scout)
         self.assertEqual(result["tier2"]["candidates"], [])
 
+
+    def test_compact_summary_keeps_only_top_candidates(self) -> None:
+        result = {
+            "format": "decomp-challenge-v2",
+            "summary": {
+                "remaining_functions": 10,
+                "undecompiled_functions": 8,
+                "p75_bytes": 400.0,
+                "tier2_threshold_bytes": 400,
+                "eligible_candidates": 6,
+            },
+            "tier2": {
+                "candidates": [
+                    {"name": "A", "size": 500, "success_score": 90, "game_logic_score": 80},
+                    {"name": "B", "size": 450, "success_score": 85, "game_logic_score": 75},
+                    {"name": "C", "size": 420, "success_score": 80, "game_logic_score": 70},
+                    {"name": "D", "size": 410, "success_score": 75, "game_logic_score": 65},
+                    {"name": "E", "size": 405, "success_score": 70, "game_logic_score": 60},
+                    {"name": "F", "size": 401, "success_score": 65, "game_logic_score": 55},
+                ]
+            },
+        }
+        summary = compact_summary(result)
+        self.assertEqual([item["name"] for item in summary["top_tier2"]], ["A", "B", "C", "D", "E"])
+        self.assertNotIn("units", summary)
 
 if __name__ == "__main__":
     unittest.main()
