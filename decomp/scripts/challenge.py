@@ -7,7 +7,6 @@ import argparse
 import json
 import math
 import re
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -97,7 +96,8 @@ def function_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
                 continue
             fuzzy = function.get("fuzzy_match_percent")
             complete = function.get("complete")
-            match = 100.0 if complete is True else to_float(fuzzy, 0.0)
+            match_available = complete is True or fuzzy is not None
+            match = 100.0 if complete is True else to_float(fuzzy) if fuzzy is not None else None
             function_entry = function.get("address")
             function_size = to_int(function.get("size"))
             translation_unit = unit.get("name")
@@ -110,6 +110,7 @@ def function_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
                 "address": function_entry,
                 "size": function_size,
                 "match_percent": match,
+                "match_available": match_available,
                 "unit": translation_unit,
                 "unit_metadata": unit.get("metadata", {}),
             })
