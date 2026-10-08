@@ -358,7 +358,11 @@ def main() -> int:
     parser.add_argument("--reference", type=Path)
     parser.add_argument("--top", type=int, default=10)
     parser.add_argument("--min-size", type=int, default=256)
+    parser.add_argument("-o", "--output", type=Path)
     args = parser.parse_args()
+
+    if args.top < 1 or args.min_size < 0:
+        parser.error("invalid top/min-size")
 
     report = load_json(args.report_json)
     scout = load_json(args.scout) if args.scout else None
@@ -370,7 +374,14 @@ def main() -> int:
         reference=reference,
         min_tier2_size=args.min_size,
     )
-    print(json.dumps(result, indent=2, sort_keys=True))
+    result["tier2"]["candidates"] = result["tier2"]["candidates"][:args.top]
+
+    rendered = json.dumps(result, indent=2, sort_keys=True)
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rendered + "\n", encoding="utf-8")
+    else:
+        print(rendered)
     return 0
 
 
