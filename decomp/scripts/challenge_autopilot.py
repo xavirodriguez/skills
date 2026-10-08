@@ -12,6 +12,19 @@ import sys
 from challenge import evaluate, load_json
 
 
+def select_tier2(
+    report: dict,
+    scout: dict,
+    *,
+    min_size: int = 256,
+    top: int = 10,
+) -> dict:
+    result = evaluate(report, scout, min_tier2_size=min_size)
+    result["eligible"] = result["tier2"]["candidates"][:top]
+    result["summary"]["p75_bytes"] = result["summary"]["p75_bytes"]
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report_json", type=Path)
