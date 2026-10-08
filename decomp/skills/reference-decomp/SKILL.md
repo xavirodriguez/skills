@@ -1,9 +1,15 @@
 ---
 name: reference-decomp
 description: Analyze an existing decompilation project as prior work so the agent can reuse solved code and avoid re-decompiling already completed functions.
+compatibility: OpenCode and Codex
 ---
 
 # Reference Decompilation
+
+
+## Helper path resolution
+
+Helper paths such as `../../scripts/<helper>` are relative to the directory containing this `SKILL.md`. Resolve them against the skill base directory before passing them to the shell or Ghidra. Do not rely on the target project's current working directory.
 
 Use this skill when an existing project for the same game, version, or executable contains decompiled source.
 
@@ -23,7 +29,7 @@ Before indexing, complete the target project's environment preflight. On Windows
 
 1. Locate a local clone of the reference repository.
 2. Record the exact reference commit and game version when known.
-3. Run `decomp/scripts/analyze_reference_project.py <reference-root>` to build an index. If a local reference `objdiff.json` exists, pass `--objdiff <reference-root>/objdiff.json` so complete units are recorded as stronger evidence.
+3. Run `../../scripts/analyze_reference_project.py <reference-root>` to build an index. If a local reference `objdiff.json` exists, pass `--objdiff <reference-root>/objdiff.json` so complete units are recorded as stronger evidence.
 4. If an XMAP analysis exists, pass `--xmap .decomp-agent/xmap-analysis.json` to correlate functions by address.
 5. Before selecting a target, check the reference index and candidate gate:
    - `unmarked` -> **apparently matching**; skip re-decompilation by default.

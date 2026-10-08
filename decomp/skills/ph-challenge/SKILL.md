@@ -1,9 +1,15 @@
 ---
 name: ph-challenge
 description: Select and solve Phantom Hourglass functions against a decompilation challenge's Tier 1, Tier 2 and optional Tier 3 requirements.
+compatibility: OpenCode and Codex
 ---
 
 # Phantom Hourglass Challenge
+
+
+## Helper path resolution
+
+Helper paths such as `../../scripts/<helper>` are relative to the directory containing this `SKILL.md`. Resolve them against the skill base directory before passing them to the shell or Ghidra. Do not rely on the target project's current working directory.
 
 ## Request routing
 
@@ -65,7 +71,7 @@ The scout is evidence only. objdiff remains authoritative.
 
 Run:
 
-    <python> <skills>/decomp/scripts/challenge.py \
+    <python> ../../scripts/challenge.py \
       .decomp-agent/challenge/report.json \
       --scout .decomp-agent/challenge/tier2-scout.json \
       --project . \
@@ -84,7 +90,7 @@ The unified engine applies the mechanical gates:
 
 Then prepare the selected candidate:
 
-    <python> <skills>/decomp/scripts/prepare_candidate.py \
+    <python> ../../scripts/prepare_candidate.py \
       .decomp-agent/challenge/tier2-selection.json <candidate> \
       --project . \
       --objdiff-cli .\\objdiff-cli.exe \
