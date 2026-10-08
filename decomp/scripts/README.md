@@ -234,3 +234,19 @@ It reports `match_percent`, `exact_match`, size, address and unit as JSON. It do
 ### run_match.py transport policy
 
 Autonomous build/compare experiments must run through `run_match.py`. The harness rejects nested `codex`/ `opencode` invocations and classifies known edit/TTY transport failures as `tool-transport-failure`. This state is telemetry only; it is not candidate stagnation.
+
+## Function integration state
+
+The autonomous challenge controller treats an exact function match as `integration-pending` until object/link integration is verified.
+
+Use:
+
+    python challenge_batch.py integration-record \
+      --session .decomp-agent/challenge/session.json \
+      --target <function> \
+      --status pass \
+      --evidence .decomp-agent/integration/<target>.json
+
+The evidence JSON separates `function`, `object`, `range`, `padding` and regional evidence. A multi-region change needs independent evidence for every region.
+
+Candidate and compare outputs now expose explicit `function_entry`, `function_size` and `translation_unit` fields. Legacy `address`/`size` aliases are retained for compatibility.
