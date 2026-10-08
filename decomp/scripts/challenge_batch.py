@@ -252,6 +252,48 @@ def claim_next(session: dict[str, Any]) -> dict[str, Any] | None:
     return candidate
 
 
+def skip_target(
+    session: dict[str, Any],
+    *,
+    target: str,
+    reason: str,
+    force: bool = False,
+) -> dict[str, Any]:
+    queue = session.get("queue", [])
+    candidate = next(
+        (item for item in queue if item.get("name") == target or item.get("key") == target),
+        None,
+    )
+    if candidate is None:
+        raise ValueError(f"Target is not present in session queue: {target}")
+    if (
+        candidate.get("key") == session.get("current_target")
+        and candidate.get("status") in {"active", "integration-pending"}
+        and not force
+    ):
+        raise ValueError(
+            "Refusing to skip current target without force. "
+            "Autonomous batches must resolve the current target before advancing."
+        )
+
+    candidate["status"] = "blocked"
+    candidate["blocked_reason"] = reason
+    candidate["blocked_at"] = now_utc()
+    if candidate.get("key") == session.get("current_target"):
+        session["current_target"] = None
+        session["phase"] = "matching"
+    session.setdefault("history", []).append({
+        "timestamp": now_utc(),
+        "target": candidate.get("name"),
+        "status": "manually-blocked",
+        "reason": reason,
+        "forced": force,
+        "counted_as_stagnation": False,
+        "counted_as_attempt": False,
+    })
+    session["updated_at"] = now_utc()
+    return candidate
+
 def record_result(
     session: dict[str, Any],
     *,
@@ -271,6 +313,12 @@ def record_result(
     )
     if candidate is None:
         raise ValueError(f"Target is not present in session queue: {target}")
+    current_target = session.get("current_target")
+    if current_target and candidate.get("key") != current_target:
+        raise ValueError(
+            f"Target is not the current batch target: {target}; "
+            f"current_target={current_target}"
+        )
 
     candidate["match_before"] = match_before
     candidate["match_after"] = match_after
@@ -352,6 +400,39 @@ def record_result(
     return candidate
 
 
+def finalize_integrated_target(session: dict[str, Any], *, target: str) -> dict[str, Any]:
+    queue = session.get("queue", [])
+    candidate = next(
+        (item for item in queue if item.get("name") == target or item.get("key") == target),
+        None,
+    )
+    if candidate is None:
+        raise ValueError(f"Target is not present in session queue: {target}")
+    if candidate.get("status") != "integration-passed":
+        raise ValueError(f"Target is not ready for integration finalization: {target}")
+    now = now_utc()
+    candidate["status"] = "matched"
+    candidate["matched_at"] = now
+    session["current_target"] = None
+    session["phase"] = "matching"
+    session["integration_matches_completed"] = sum(1 for item in queue if item.get("status") == "matched")
+    session["matches_completed"] = session["integration_matches_completed"]
+    session.setdefault("history", []).append({
+        "timestamp": now,
+        "phase": "integration-refresh",
+        "target": candidate.get("name"),
+        "status": "integration-finalized",
+        "counted_as_stagnation": False,
+        "counted_as_attempt": False,
+    })
+    session["updated_at"] = now
+    quota = int(session.get("target_quota") or 0)
+    if quota > 0 and session["matches_completed"] >= quota:
+        session["halted"] = True
+        session["phase"] = "halted"
+        session["stop_reason"] = "quota-reached"
+    return candidate
+
 def record_integration(
     session: dict[str, Any],
     *,
@@ -373,6 +454,12 @@ def record_integration(
     )
     if candidate is None:
         raise ValueError(f"Target is not present in session queue: {target}")
+    current_target = session.get("current_target")
+    if current_target and candidate.get("key") != current_target:
+        raise ValueError(
+            f"Target is not the current batch target: {target}; "
+            f"current_target={current_target}"
+        )
     if candidate.get("status") != "integration-pending":
         raise ValueError(f"Target is not awaiting integration verification: {target}")
     if status not in {"pass", "mismatch", "infrastructure-blocker"}:
@@ -393,14 +480,17 @@ def record_integration(
     }
 
     if status == "pass":
-        candidate["status"] = "matched"
-        candidate["matched_at"] = now
-        session["current_target"] = None
-        session["phase"] = "matching"
+        candidate["status"] = "integration-passed"
+        session["current_target"] = candidate["key"]
+        session["phase"] = "refresh-required"
         session["integration_matches_completed"] = sum(
+            1
+            for item in queue
+            if item.get("status") in {"matched", "integration-passed"}
+        )
+        session["matches_completed"] = sum(
             1 for item in queue if item.get("status") == "matched"
         )
-        session["matches_completed"] = session["integration_matches_completed"]
     elif status == "mismatch":
         candidate["status"] = "integration-pending"
         session["phase"] = "integration"
@@ -516,6 +606,17 @@ def refresh_report(
         reference=load_json(reference_path) if reference_path else None,
     )
     merge_candidates(session, evaluation)
+    active_key = session.get("current_target")
+    if active_key:
+        active = next(
+            (item for item in session.get("queue", []) if item.get("key") == active_key),
+            None,
+        )
+        if active and active.get("status") == "integration-passed":
+            finalize_integrated_target(
+                session,
+                target=str(active.get("key") or active.get("name")),
+            )
     save_session(session_path, session)
     return 0, session
 
@@ -652,6 +753,11 @@ def main() -> int:
     skip.add_argument("--session", type=Path, default=Path(".decomp-agent/challenge/session.json"))
     skip.add_argument("--target", required=True)
     skip.add_argument("--reason", required=True)
+    skip.add_argument(
+        "--force",
+        action="store_true",
+        help="Explicitly abandon the active target; never use in autonomous selection.",
+    )
 
     status = sub.add_parser("status")
     status.add_argument("--session", type=Path, default=Path(".decomp-agent/challenge/session.json"))
@@ -701,6 +807,13 @@ def main() -> int:
     session = load_session(args.session)
 
     if args.command == "next":
+        if session.get("phase") == "refresh-required":
+            print(json.dumps({
+                "status": "refresh-required",
+                "current_target": session.get("current_target"),
+                "message": "Run authoritative refresh before selecting the next target.",
+            }, indent=2, sort_keys=True))
+            return 2
         candidate = claim_next(session) if args.claim else choose_next(session)
         save_session(args.session, session)
         print(json.dumps(candidate or {"status": "no-candidate"}, indent=2, sort_keys=True))
@@ -810,18 +923,15 @@ def main() -> int:
         return code
 
     if args.command == "skip":
-        candidate = next(
-            (item for item in session.get("queue", []) if item.get("name") == args.target),
-            None,
-        )
-        if candidate is None:
-            raise SystemExit(f"Target not found: {args.target}")
-        candidate["status"] = "blocked"
-        candidate["blocked_reason"] = args.reason
-        candidate["blocked_at"] = now_utc()
-        if session.get("current_target") == candidate.get("key"):
-            session["current_target"] = None
-        session["updated_at"] = now_utc()
+        try:
+            candidate = skip_target(
+                session,
+                target=args.target,
+                reason=args.reason,
+                force=args.force,
+            )
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
         save_session(args.session, session)
         print(json.dumps(candidate, indent=2, sort_keys=True))
         return 0
