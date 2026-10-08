@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from run_match import build_process_args, derive_lesson
+from run_match import build_process_args, capture_git_state, derive_lesson
 
 
 class RunMatchShellTests(unittest.TestCase):
@@ -26,6 +26,34 @@ class RunMatchShellTests(unittest.TestCase):
     def test_cmd_invocation(self) -> None:
         args = build_process_args("dir", "cmd")
         self.assertEqual(args[:3], ["cmd.exe", "/d", "/s"])
+
+
+    def test_git_state_excludes_agent_artifacts(self) -> None:
+        import subprocess
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            (root / "source.cpp").write_text("int x = 1;\n", encoding="utf-8")
+            subprocess.run(["git", "add", "source.cpp"], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                 "commit", "-m", "baseline"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+
+            (root / "source.cpp").write_text("int x = 2;\n", encoding="utf-8")
+            (root / ".decomp-agent").mkdir()
+            (root / ".decomp-agent" / "internal.json").write_text("{}", encoding="utf-8")
+
+            state = capture_git_state(root)
+            self.assertTrue(state["dirty"])
+            self.assertTrue(any("source.cpp" in item for item in state["changed_files"]))
+            self.assertFalse(any(".decomp-agent" in item for item in state["changed_files"]))
+            self.assertIn("source.cpp", state["diff_stat"])
 
 
 if __name__ == "__main__":
