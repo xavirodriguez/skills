@@ -13,7 +13,7 @@ class ChallengeSelectorTests(unittest.TestCase):
     def test_percentile75_uses_linear_interpolation(self) -> None:
         self.assertEqual(percentile75([100, 200, 300, 400]), 325.0)
 
-    def test_missing_fuzzy_percent_is_zero(self) -> None:
+    def test_missing_fuzzy_percent_is_unavailable(self) -> None:
         report = {
             "version": 2,
             "units": [
@@ -22,8 +22,9 @@ class ChallengeSelectorTests(unittest.TestCase):
             ],
         }
         result = select(report)
-        self.assertEqual(result["summary"]["undecompiled_functions"], 1)
-        self.assertEqual(result["tier1"]["candidates"][0]["name"], "fn_a")
+        self.assertEqual(result["summary"]["undecompiled_functions"], 0)
+        self.assertEqual(result["summary"]["unavailable_match_data_functions"], 1)
+        self.assertEqual(result["tier1"]["candidates"], [])
 
     def test_tier2_applies_both_size_gates(self) -> None:
         report = {

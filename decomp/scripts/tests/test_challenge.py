@@ -18,9 +18,9 @@ class UnifiedChallengeTests(unittest.TestCase):
             "version": 2,
             "units": [
                 {"name": "u", "functions": [
-                    {"name": "A", "size": 256, "address": "0x1000"},
-                    {"name": "B", "size": 300, "address": "0x1100"},
-                    {"name": "C", "size": 400, "address": "0x1200"},
+                    {"name": "A", "size": 256, "address": "0x1000", "fuzzy_match_percent": 0},
+                    {"name": "B", "size": 300, "address": "0x1100", "fuzzy_match_percent": 0},
+                    {"name": "C", "size": 400, "address": "0x1200", "fuzzy_match_percent": 0},
                     {"name": "P", "size": 900, "address": "0x1300", "fuzzy_match_percent": 50},
                     {"name": "M", "size": 1000, "address": "0x1400", "fuzzy_match_percent": 100},
                 ]},
@@ -44,7 +44,7 @@ class UnifiedChallengeTests(unittest.TestCase):
                 "name": "u",
                 "functions": [
                     {"name": "Partial", "size": 900, "address": "0x2000", "fuzzy_match_percent": 1},
-                    {"name": "Zero", "size": 900, "address": "0x2100"},
+                    {"name": "Zero", "size": 900, "address": "0x2100", "fuzzy_match_percent": 0},
                 ],
             }],
         }
@@ -69,6 +69,7 @@ class UnifiedChallengeTests(unittest.TestCase):
                     "name": "UpdateEnemy",
                     "size": 1200,
                     "address": "0x3000",
+                    "fuzzy_match_percent": 0,
                 }],
             }],
         }
@@ -100,6 +101,7 @@ class UnifiedChallengeTests(unittest.TestCase):
                     "name": "GetHealth",
                     "size": 800,
                     "address": "0x4000",
+                    "fuzzy_match_percent": 0,
                 }],
             }],
         }
@@ -114,6 +116,26 @@ class UnifiedChallengeTests(unittest.TestCase):
         result = evaluate(report, scout)
         self.assertEqual(result["tier2"]["candidates"], [])
 
+
+    def test_unavailable_match_data_is_not_counted_as_partial_or_match(self) -> None:
+        report = {
+            "version": 2,
+            "units": [{
+                "name": "u",
+                "functions": [
+                    {"name": "Unknown", "size": 128, "address": "0x5000"},
+                    {"name": "Zero", "size": 256, "address": "0x5100", "fuzzy_match_percent": 0},
+                    {"name": "Partial", "size": 256, "address": "0x5200", "fuzzy_match_percent": 50},
+                    {"name": "Match", "size": 256, "address": "0x5300", "fuzzy_match_percent": 100},
+                ],
+            }],
+        }
+        result = evaluate(report)
+        self.assertEqual(result["summary"]["unavailable_match_data_functions"], 1)
+        self.assertEqual(result["summary"]["matched_functions"], 1)
+        self.assertEqual(result["summary"]["partial_functions"], 1)
+        self.assertEqual(result["summary"]["remaining_functions"], 2)
+        self.assertEqual(result["summary"]["undecompiled_functions"], 1)
 
     def test_compact_summary_keeps_only_top_candidates(self) -> None:
         result = {

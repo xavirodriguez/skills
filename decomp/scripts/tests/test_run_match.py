@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from run_match import build_process_args, capture_git_state, contains_nested_agent_invocation, derive_lesson
+from run_match import build_process_args, capture_git_state, contains_nested_agent_invocation, derive_lesson, run
 
 
 class RunMatchShellTests(unittest.TestCase):

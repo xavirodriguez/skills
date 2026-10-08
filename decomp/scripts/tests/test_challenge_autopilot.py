@@ -14,9 +14,9 @@ class Tier2AutopilotTests(unittest.TestCase):
         report = {
             "version": 2,
             "units": [
-                {"name": "a", "functions": [{"name": "A", "size": 256, "address": "0x1000"}]},
-                {"name": "b", "functions": [{"name": "B", "size": 300, "address": "0x1100"}]},
-                {"name": "c", "functions": [{"name": "C", "size": 400, "address": "0x1200"}]},
+                {"name": "a", "functions": [{"name": "A", "size": 256, "address": "0x1000", "fuzzy_match_percent": 0}]},
+                {"name": "b", "functions": [{"name": "B", "size": 300, "address": "0x1100", "fuzzy_match_percent": 0}]},
+                {"name": "c", "functions": [{"name": "C", "size": 400, "address": "0x1200", "fuzzy_match_percent": 0}]},
                 {"name": "d", "functions": [{"name": "D", "size": 900, "address": "0x1300", "fuzzy_match_percent": 100}]},
             ],
         }
@@ -36,9 +36,9 @@ class Tier2AutopilotTests(unittest.TestCase):
         report = {
             "version": 2,
             "units": [
-                {"name": "u1", "functions": [{"name": "GetHealth", "size": 512, "address": "0x2000"}]},
-                {"name": "u2", "functions": [{"name": "EnemyTable", "size": 1024, "address": "0x3000"}]},
-                {"name": "u3", "functions": [{"name": "UpdateEnemy", "size": 1024, "address": "0x4000"}]},
+                {"name": "u1", "functions": [{"name": "GetHealth", "size": 512, "address": "0x2000", "fuzzy_match_percent": 0}]},
+                {"name": "u2", "functions": [{"name": "EnemyTable", "size": 1024, "address": "0x3000", "fuzzy_match_percent": 0}]},
+                {"name": "u3", "functions": [{"name": "UpdateEnemy", "size": 1024, "address": "0x4000", "fuzzy_match_percent": 0}]},
             ],
         }
         scout = {
@@ -56,7 +56,7 @@ class Tier2AutopilotTests(unittest.TestCase):
         report = {
             "version": 2,
             "units": [
-                {"name": "BigWrapper", "functions": [{"name": "BigWrapper", "size": 600, "address": "0x5000"}]},
+                {"name": "BigWrapper", "functions": [{"name": "BigWrapper", "size": 600, "address": "0x5000", "fuzzy_match_percent": 0}]},
             ],
         }
         scout = {
@@ -72,7 +72,7 @@ class Tier2AutopilotTests(unittest.TestCase):
             "version": 2,
             "units": [
                 {"name": "partial", "functions": [{"name": "Partial", "size": 900, "address": "0x6000", "fuzzy_match_percent": 12.5}]},
-                {"name": "logic", "functions": [{"name": "Logic", "size": 900, "address": "0x6100"}]},
+                {"name": "logic", "functions": [{"name": "Logic", "size": 900, "address": "0x6100", "fuzzy_match_percent": 0}]},
             ],
         }
         scout = {

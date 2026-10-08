@@ -39,6 +39,8 @@ def gate(objdiff: dict[str, Any], reference: dict[str, Any]) -> dict[str, Any]:
     index = ref_index(reference)
     functions = []
     for row in function_rows(objdiff):
+        if not row.get("match_available"):
+            continue
         if row["match_percent"] >= 100.0:
             continue
 
