@@ -40,7 +40,9 @@ class HypothesisKnowledgeTests(unittest.TestCase):
         )
         self.assertEqual(results[0]["target"], "func_A")
         self.assertEqual(results[0]["match_after"], 77.0)
-        self.assertIn("stack_layout", results[0]["knowledge_reasons"][1])
+        self.assertTrue(
+            any("tags:stack_layout" in reason for reason in results[0]["knowledge_reasons"])
+        )
 
     def test_compact_result_is_context_friendly(self) -> None:
         results = compact([{
