@@ -136,16 +136,30 @@ def merge_candidates(
         current_match = float(candidate.get("match_percent") or 0)
         item["last_report_match"] = current_match
         if current_match >= 100.0:
-            item["status"] = "matched"
-            item["matched_at"] = item.get("matched_at") or now_utc()
-        elif item.get("status") == "pending":
-            item["status"] = "pending"
+            if item.get("status") == "matched":
+                item["matched_at"] = item.get("matched_at") or now_utc()
+            elif session.get("current_target") == item.get("key"):
+                item["status"] = "integration-pending"
+                item.setdefault("integration", {"status": "pending"})
+            elif item.get("status") not in {"blocked", "matched"}:
+                item["status"] = "integration-pending"
+                item.setdefault("integration", {"status": "pending"})
+        elif item.get("status") == "integration-pending":
+            item["status"] = "active"
+            session["phase"] = "matching"
 
     # Preserve an active target even if its match percentage moved it outside
     # the selector's zero-match population.
     active = session.get("current_target")
     if active and active in existing:
-        existing[active]["status"] = "active"
+        current = existing[active]
+        if current.get("status") not in {"integration-pending", "matched"}:
+            current["status"] = "active"
+        session["phase"] = (
+            "integration"
+            if current.get("status") == "integration-pending"
+            else "matching"
+        )
 
 
 def init_session(
@@ -170,8 +184,11 @@ def init_session(
         "tier": tier,
         "target_quota": quota,
         "matches_completed": 0,
+        "function_matches_completed": 0,
+        "integration_matches_completed": 0,
         "max_stagnation": max_stagnation,
         "current_target": None,
+        "phase": "matching",
         "halted": False,
         "stop_reason": None,
         "queue": [],
@@ -194,7 +211,7 @@ def choose_next(session: dict[str, Any]) -> dict[str, Any] | None:
             (item for item in queue if item.get("key") == current_key),
             None,
         )
-        if current and current.get("status") == "active":
+        if current and current.get("status") in {"active", "integration-pending"}:
             return current
 
     pending = [
@@ -227,6 +244,7 @@ def claim_next(session: dict[str, Any]) -> dict[str, Any] | None:
 
     candidate["status"] = "active"
     session["current_target"] = candidate["key"]
+    session["phase"] = "matching"
     session["updated_at"] = now_utc()
     return candidate
 
