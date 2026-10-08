@@ -233,6 +233,11 @@ def main() -> int:
         help="Maximum seconds for each compare command.",
     )
     parser.add_argument(
+        "--require-policy",
+        action="store_true",
+        help="Fail when the session policy file is missing.",
+    )
+    parser.add_argument(
         "--policy",
         type=Path,
         default=Path(".decomp-agent/session-policy.json"),
@@ -273,9 +278,9 @@ def main() -> int:
     try:
         policy = load_policy(args.policy)
         if args.build_command:
-            require_allowed(args.policy, "build")
+            require_allowed(args.policy, "build", require_file=args.require_policy)
         if args.compare_command:
-            require_allowed(args.policy, "compare")
+            require_allowed(args.policy, "compare", require_file=args.require_policy)
     except (OSError, ValueError, PermissionError) as exc:
         print(json.dumps({
             "status": "policy-blocked",
