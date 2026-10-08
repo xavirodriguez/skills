@@ -52,21 +52,19 @@ For the active target, follow the normal matching-decomp loop. Run exactly one s
 
 After each experiment, record the authoritative result:
 
-    <python> ../../scripts/challenge_batch.py record --session .decomp-agent/challenge/session.json --target <candidate> --before <match-before> --after <match-after> [--exact] [--mismatch "<first mismatch>"] [--lesson "<compact lesson>"]
+    <python> ../../scripts/challenge_batch.py record --session .decomp-agent/challenge/session.json --target <candidate> --before <match-before> --after <match-after> [--mismatch "<first mismatch>"] [--lesson "<compact lesson>"]
+
+For an exact match, use `--exact` together with the authoritative report refresh command. The controller then refreshes the report and rescales/rescores the queue as one success transition:
+
+    <python> ../../scripts/challenge_batch.py record --session .decomp-agent/challenge/session.json --target <candidate> --before <match-before> --after 100 --exact --refresh-command "<authoritative report/build command>" --report .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --reference .decomp-agent/reference/ph-analysis.json --project . --policy .decomp-agent/session-policy.json --require-policy
 
 Rules:
-- An exact match clears the active target and increments `matches_completed`.
+- An exact match clears the active target, increments `matches_completed`, and triggers the mandatory authoritative refresh.
 - A positive match delta resets stagnation.
 - A non-improving experiment increments stagnation.
 - When stagnation reaches the configured threshold, the candidate is automatically marked `blocked` and the controller can move to the next candidate.
 - Infrastructure blockers halt the session; they must not be silently converted into candidate skips.
 - A candidate that becomes partial after an edit remains the active target until it reaches exact match or is blocked. Do not lose it merely because it no longer satisfies the original zero-match selector gate.
-
-After every exact match, regenerate the authoritative report, then resync the queue:
-
-    <python> ../../scripts/challenge_batch.py refresh --session .decomp-agent/challenge/session.json --project . --refresh-command "<authoritative report/build command>" --report .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --reference .decomp-agent/reference/ph-analysis.json --policy .decomp-agent/session-policy.json --require-policy
-
-This refresh is mandatory after an exact match because the remaining zero-match population, P75 threshold and candidate ranking may have changed.
 
 Then claim the next candidate and continue without asking the user again:
 
