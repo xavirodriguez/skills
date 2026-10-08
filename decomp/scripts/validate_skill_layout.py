@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+NAME_RE = re.compile(r"^(?=.{1,64}$)(?!.*--)[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 def parse_frontmatter(text: str) -> dict[str, str]:
@@ -85,8 +85,22 @@ def main() -> int:
         return 1
 
     errors: list[str] = []
+    skill_names: dict[str, Path] = {}
     for path in skill_files:
         errors.extend(validate_skill(path, skills_root))
+        try:
+            metadata = parse_frontmatter(path.read_text(encoding="utf-8"))
+            name = metadata.get("name", "")
+        except (OSError, ValueError):
+            name = ""
+        if name:
+            previous = skill_names.get(name)
+            if previous is not None:
+                errors.append(
+                    f"{path}: duplicate skill name {name!r}; already defined by {previous}"
+                )
+            else:
+                skill_names[name] = path
 
     if errors:
         for error in errors:
