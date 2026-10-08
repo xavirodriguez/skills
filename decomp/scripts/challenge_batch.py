@@ -124,6 +124,9 @@ def merge_candidates(
             queue.append(item)
 
         item.update({
+            "function_entry": candidate.get("function_entry", candidate.get("address")),
+            "function_size": candidate.get("function_size", candidate.get("size")),
+            "translation_unit": candidate.get("translation_unit", candidate.get("unit")),
             "size": candidate.get("size"),
             "success_score": candidate.get("success_score"),
             "game_logic_score": candidate.get("game_logic_score"),
