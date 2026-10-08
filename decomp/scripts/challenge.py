@@ -311,11 +311,29 @@ def evaluate(
         else:
             rejected.append(candidate)
 
+    all_evaluated = candidates + rejected
     candidates.sort(
         key=lambda x: (-x["success_score"], -x["game_logic_score"], -(x["size"] or 0), x["name"])
     )
     rejected.sort(
         key=lambda x: (-x["game_logic_score"], -(x["size"] or 0), x["name"])
+    )
+
+    tier1 = [
+        item for item in all_evaluated
+        if (item.get("size") or 0) >= 8
+        and not item["logic_screen"]["name_reason"]
+        and not item["gates"]["not_accessor"] is False
+        and not item["gates"]["not_thunk"] is False
+    ]
+    tier1.sort(key=lambda x: ((x.get("size") or 0), -x["success_score"], x["name"]))
+
+    tier3 = [
+        item for item in all_evaluated
+        if not item["logic_screen"]["name_reason"]
+    ]
+    tier3.sort(
+        key=lambda x: (-x["complexity_score"], -x["game_logic_score"], x["name"])
     )
 
     return {
@@ -330,10 +348,18 @@ def evaluate(
             "rejected_candidates": len(rejected),
             "p75_method": "linear_interpolation",
             "p75_population": "remaining zero-match functions with known positive machine-code size",
+            "remaining_undecompiled_p75_bytes": p75,
+            "tier2_size_threshold_bytes": threshold,
+        },
+        "tier1": {
+            "candidates": tier1,
         },
         "tier2": {
             "candidates": candidates,
             "near_miss": rejected[:25],
+        },
+        "tier3": {
+            "candidates": tier3,
         },
     }
 
