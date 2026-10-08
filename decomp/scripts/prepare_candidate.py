@@ -195,10 +195,11 @@ def main() -> int:
     }
 
     ledger = project / ".decomp-agent" / "hypotheses.jsonl"
+    signature = str(candidate.get("scout", {}).get("signature", "")).strip()
     prior_knowledge = search(
         read_entries(ledger),
         target=str(candidate.get("name", args.candidate)),
-        query=str(candidate.get("name", args.candidate)),
+        query=signature or "exact match",
         top_k=5,
     )
 
