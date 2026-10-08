@@ -6,6 +6,11 @@ compatibility: OpenCode and Codex
 
 # XMAP Analysis
 
+
+## Helper path resolution
+
+Helper paths such as `../../scripts/<helper>` are relative to the directory containing this `SKILL.md`. Resolve them against the skill base directory before passing them to the shell or Ghidra. Do not rely on the target project's current working directory.
+
 Use this skill when a project contains a linker map such as `arm9.o.xMAP`.
 
 The XMAP is **build/link evidence**, not semantic proof. Its highest value comes from correlating it with the ROM/binary and Ghidra.
