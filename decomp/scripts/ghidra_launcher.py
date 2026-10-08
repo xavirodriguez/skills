@@ -40,17 +40,20 @@ def launcher_info(ghidra_home: Path | None = None) -> dict[str, str | bool | Non
             continue
         seen.add(home)
         support = home / "support"
-        py = support / ("pyghidraRun.bat" if os.name == "nt" else "pyghidraRun")
-        headless = support / (
-            "analyzeHeadless.bat" if os.name == "nt" else "analyzeHeadless"
-        )
-        if py.is_file() or headless.is_file():
+        py_candidates = [support / "pyghidraRun.bat", support / "pyghidraRun"]
+        headless_candidates = [
+            support / "analyzeHeadless.bat",
+            support / "analyzeHeadless",
+        ]
+        py = next((item for item in py_candidates if item.is_file()), None)
+        headless = next((item for item in headless_candidates if item.is_file()), None)
+        if py or headless:
             return {
                 "ghidra_home": str(home),
-                "pyghidra_launcher": str(py) if py.is_file() else None,
-                "analyze_headless": str(headless) if headless.is_file() else None,
-                "pyghidra_available": py.is_file(),
-                "headless_available": headless.is_file(),
+                "pyghidra_launcher": str(py) if py else None,
+                "analyze_headless": str(headless) if headless else None,
+                "pyghidra_available": bool(py),
+                "headless_available": bool(headless),
             }
 
     return {
