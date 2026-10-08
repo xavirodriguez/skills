@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backward-compatible wrapper around the unified challenge engine."""
+"""Backward-compatible Tier 2 selector; use challenge_batch.py for autonomous multi-target matching."""
 
 from __future__ import annotations
 
