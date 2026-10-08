@@ -37,6 +37,7 @@ def validate_region(name: str, region: Any) -> dict[str, Any]:
     obj = region.get("object")
     rng = region.get("range")
     evidence = region.get("evidence")
+    verification = region.get("verification")
 
     if not isinstance(function, dict):
         raise ValueError(f"region {name!r} is missing function metadata")
@@ -46,6 +47,17 @@ def validate_region(name: str, region: Any) -> dict[str, Any]:
         raise ValueError(f"region {name!r} is missing range metadata")
     if not isinstance(evidence, list) or not evidence:
         raise ValueError(f"region {name!r} needs independent evidence")
+    if not isinstance(verification, dict):
+        raise ValueError(f"region {name!r} needs authoritative verification")
+    verification_status = str(verification.get("status") or "").lower()
+    if verification_status != "pass":
+        raise ValueError(f"region {name!r} authoritative verification is not pass")
+    verification_match = float(verification.get("function_match_percent"))
+    if verification_match < 100.0:
+        raise ValueError(f"region {name!r} authoritative function match is below 100%")
+    verification_command = str(verification.get("command") or "").strip()
+    if not verification_command:
+        raise ValueError(f"region {name!r} needs authoritative verification command")
 
     function_entry = parse_int(function.get("entry"), f"{name}.function.entry")
     function_size = parse_int(function.get("size"), f"{name}.function.size")
@@ -115,6 +127,11 @@ def validate_region(name: str, region: Any) -> dict[str, Any]:
             else None
         ),
         "evidence": [str(item) for item in evidence],
+        "verification": {
+            "status": "pass",
+            "function_match_percent": verification_match,
+            "command": verification_command,
+        },
         "independent_evidence": bool(region.get("independent_evidence", True)),
     }
 
