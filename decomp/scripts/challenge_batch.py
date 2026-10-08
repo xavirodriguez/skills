@@ -234,7 +234,6 @@ def record_result(
     if candidate is None:
         raise ValueError(f"Target is not present in session queue: {target}")
 
-    candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
     candidate["match_before"] = match_before
     candidate["match_after"] = match_after
     candidate["last_mismatch"] = mismatch
@@ -243,8 +242,10 @@ def record_result(
 
     if tool_transport_failure:
         candidate["status"] = "active"
+        candidate["tool_failures"] = int(candidate.get("tool_failures") or 0) + 1
         candidate["last_failure"] = "tool-transport-failure"
     elif exact or match_after >= 100.0:
+        candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
         candidate["status"] = "matched"
         candidate["stagnation"] = 0
         candidate["matched_at"] = now_utc()
@@ -254,12 +255,15 @@ def record_result(
         if session.get("current_target") == candidate["key"]:
             session["current_target"] = None
     elif infrastructure_blocker:
+        candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
         session["halted"] = True
         session["stop_reason"] = "infrastructure-blocker"
     elif match_after > match_before:
+        candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
         candidate["status"] = "active"
         candidate["stagnation"] = 0
     else:
+        candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
         candidate["status"] = "active"
         candidate["stagnation"] = int(candidate.get("stagnation") or 0) + 1
         if candidate["stagnation"] >= int(session.get("max_stagnation") or DEFAULT_MAX_STAGNATION):
@@ -282,6 +286,7 @@ def record_result(
         "status": "tool-transport-failure" if tool_transport_failure else candidate.get("status"),
         "stagnation": candidate.get("stagnation"),
         "counted_as_stagnation": not tool_transport_failure,
+        "counted_as_attempt": not tool_transport_failure,
     })
     session["updated_at"] = now_utc()
     session["matches_completed"] = sum(
