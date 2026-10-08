@@ -4,7 +4,7 @@
   // Point this to the checked-out "decomp" directory in this repository.
   // Use an absolute path when the config is global.
   "skills": [
-    "D:/path/to/skills/decomp"
+    "D:/path/to/opencode-decomp-skills"
   ],
 
   // OpenCode V2 uses ordered permission rules.
