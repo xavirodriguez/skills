@@ -11,6 +11,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from hypothesis_knowledge import compact, read_entries, search
+
 
 def load(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -71,9 +73,24 @@ def run_objdiff(cli: Path, project: Path, symbol: str) -> tuple[int, str]:
     return process.returncode, process.stdout
 
 
-def make_prompt(candidate: dict[str, Any]) -> str:
+def make_prompt(
+    candidate: dict[str, Any],
+    prior_knowledge: list[dict[str, Any]] | None = None,
+) -> str:
     scout = candidate.get("scout", {})
     reference = candidate.get("reference") or {}
+    knowledge = prior_knowledge or []
+    knowledge_lines = []
+    for item in compact(knowledge)[:5]:
+        knowledge_lines.append(
+            "- {target}: {hypothesis} -> {lesson}".format(
+                target=item.get("target"),
+                hypothesis=item.get("hypothesis"),
+                lesson=item.get("lesson"),
+            )
+        )
+    prior_lessons = "\n".join(knowledge_lines) if knowledge_lines else "- None available."
+
     values = {
         "name": candidate.get("name"),
         "address": candidate.get("address"),
@@ -94,6 +111,7 @@ def make_prompt(candidate: dict[str, Any]) -> str:
         "globals": scout.get("globals"),
         "signature": scout.get("signature", ""),
         "reference_action": reference.get("recommended_action"),
+        "prior_lessons": prior_lessons,
     }
     return """# Decomp candidate: {name}
 
@@ -122,6 +140,9 @@ CFG evidence:
 - signature: {signature}
 
 Reference action: {reference_action}
+
+Prior lessons from previous functions:
+{prior_lessons}
 
 Work:
 1. Verify the function is real game logic and not a getter, stub, wrapper, initializer or table/data helper.
@@ -168,10 +189,19 @@ def main() -> int:
     output.mkdir(parents=True, exist_ok=True)
 
     manifest: dict[str, Any] = {
-        "format": "decomp-candidate-pack-v1",
+        "format": "decomp-candidate-pack-v2",
         "candidate": candidate,
         "files": {},
     }
+
+    ledger = project / ".decomp-agent" / "hypotheses.jsonl"
+    signature = str(candidate.get("scout", {}).get("signature", "")).strip()
+    prior_knowledge = search(
+        read_entries(ledger),
+        target=str(candidate.get("name", args.candidate)),
+        query=signature or "exact match",
+        top_k=5,
+    )
 
     source_path = resolve_source(project, candidate)
     if source_path:
@@ -308,6 +338,12 @@ def main() -> int:
         manifest["files"]["objdiff"] = "objdiff.txt"
         manifest["objdiff_exit"] = code
 
+    (output / "prior-knowledge.json").write_text(
+        json.dumps(compact(prior_knowledge), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    manifest["files"]["prior_knowledge"] = "prior-knowledge.json"
+
     (output / "candidate.json").write_text(
         json.dumps(candidate, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -315,7 +351,7 @@ def main() -> int:
     manifest["files"]["candidate"] = "candidate.json"
 
     (output / "codex-prompt.md").write_text(
-        make_prompt(candidate),
+        make_prompt(candidate, prior_knowledge),
         encoding="utf-8",
     )
     manifest["files"]["prompt"] = "codex-prompt.md"

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from source_inventory import index_sources, lookup
+from session_policy import require_allowed
 
 
 GENERIC_PREFIXES = ("FUN_", "sub_", "LAB_", "thunk_")
@@ -414,11 +415,28 @@ def main() -> int:
     parser.add_argument("--min-size", type=int, default=256)
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument(
+        "--require-policy",
+        action="store_true",
+        help="Fail when the session policy file is missing.",
+    )
+    parser.add_argument(
+        "--policy",
+        type=Path,
+        default=Path(".decomp-agent/session-policy.json"),
+        help="Session policy JSON; missing policy means no additional restriction.",
+    )
+
+    parser.add_argument(
         "--full-output",
         action="store_true",
         help="Print the full JSON even when --output is used.",
     )
     args = parser.parse_args()
+
+    try:
+        require_allowed(args.policy, "select", require_file=args.require_policy)
+    except (OSError, ValueError, PermissionError) as exc:
+        parser.error(str(exc))
 
     if args.top < 1 or args.min_size < 0:
         parser.error("invalid top/min-size")

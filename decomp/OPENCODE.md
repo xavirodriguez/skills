@@ -4,7 +4,11 @@ This directory contains the native OpenCode skills for the decompilation workflo
 
 ## Installation
 
-Keep the repository cloned locally and add the **`decomp` directory** as an explicit OpenCode skill source.
+The canonical skills live under `decomp/skills/`. For a truly self-contained OpenCode installation, generate a bundle first:
+
+    python decomp/scripts/package_opencode.py --output D:/xavi/opencode-decomp-skills --force
+
+The generated directory contains one OpenCode skill directory per `SKILL.md` plus a private `_runtime/` directory with the shared helpers. The source repository remains the single source of truth; the bundle is generated output.
 
 On Windows, for example, add this to your global OpenCode config at:
 
@@ -16,14 +20,14 @@ Use an absolute path because relative paths in the OpenCode `skills` array are r
 {
   "$schema": "https://opencode.ai/config.json",
   "skills": [
-    "D:/xavi/skills/decomp"
+    "D:/xavi/opencode-decomp-skills"
   ]
 }
 ```
 
 Replace the path with the location where this repository is cloned.
 
-OpenCode scans the configured source recursively, so it discovers:
+OpenCode scans the configured source recursively. The generated bundle therefore exposes:
 
     decomp/skills/ph-decomp/SKILL.md
     decomp/skills/ph-challenge/SKILL.md
@@ -62,6 +66,8 @@ A named function therefore does not trigger global candidate selection unless th
 
 ## Development
 
+For development, you can point OpenCode directly at `D:/xavi/skills/decomp`. The bundler is preferred for validating the portable installation layout.
+
 To test a branch of this repository with OpenCode:
 
 ```powershell
@@ -87,7 +93,9 @@ the shared helpers are:
 
 This matters for portability: OpenCode resolves paths inside a skill relative to the directory that contains `SKILL.md`. Do not reintroduce a host-specific `<skills>/decomp/scripts` placeholder.
 
-The same layout also keeps the skills usable from the existing Codex plugin because the shared scripts remain inside the `decomp` plugin tree.
+The canonical repository layout keeps the skills usable from the existing Codex plugin because the shared scripts remain inside the `decomp` plugin tree. The OpenCode bundle rewrites helper paths to its private `_runtime/` directory.
+
+For OpenCode V2, use ordered `permissions` rules. The native skill permission is separate from shell/edit permissions; session policy files provide an additional repository-level gate for decomp helpers. See `opencode.example.jsonc`.
 
 ## Troubleshooting
 

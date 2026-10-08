@@ -62,6 +62,17 @@ Uso:
 El selector no decide por sí solo si una función contiene lógica de juego real: esa comprobación requiere inspección manual.
 
 
+
+### OpenCode packaging
+
+For a self-contained OpenCode installation, generate the native skill bundle:
+
+```powershell
+python decomp/scripts/package_opencode.py --output D:\\xavi\\opencode-decomp-skills --force
+```
+
+Then point OpenCode's `skills` array at that generated directory. The repository remains the single source of truth; the generated bundle contains the shared runtime helpers inside the OpenCode skill source.
+
 ## matching-decomp
 
 Skill para **matching decompilation** de juegos y software legacy: Ghidra/PyGhidra + evidencia estructurada + hipótesis de código fuente + build/compare reproducible.
@@ -114,6 +125,8 @@ Después de inspeccionar el proyecto, el agente debe descubrir y usar sus comand
 - Los errores de infraestructura se detienen; los errores derivados de una hipótesis de código se tratan como evidencia.
 
 La implementación está documentada en `decomp/MANUAL.md`.
+
+La integración con OpenCode está documentada en `decomp/OPENCODE.md`. Las políticas de sesión y el histórico de hipótesis se aplican también a los helpers autónomos.
 
 
 ### Tier 2 automatizado

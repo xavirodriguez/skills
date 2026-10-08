@@ -26,6 +26,34 @@ A concrete target bypasses candidate selection; it does not bypass evidence need
 
 When the request is ambiguous, prefer the cheaper non-mutating mode and gather only enough evidence to resolve the ambiguity.
 
+
+### Executable session policy
+
+The action budget is advisory unless it is materialized as \`.decomp-agent/session-policy.json\`.
+
+Create it at the start of an autonomous workflow:
+
+    <python> ../../scripts/session_policy.py init --mode target-match --force
+
+Supported modes are \`explain\`, \`inspect\`, \`analyze\`, \`target-match\`, \`select\` and \`challenge\`.
+
+Autonomous helpers enforce the policy when they receive \`--policy\` and \`--require-policy\`. In particular:
+- \`run_match.py\` enforces \`build\` and \`compare\`;
+- \`challenge.py\`, \`challenge_autopilot.py\`, \`challenge_selector.py\` and \`candidate_gate.py\` enforce \`select\`.
+
+A missing policy keeps backward compatibility and allows the operation. An existing policy is never bypassed silently.
+
+### Reuse prior hypotheses
+
+The experiment ledger at \`.decomp-agent/hypotheses.jsonl\` is a project-level knowledge base, not just a log.
+
+Before a new experiment:
+1. query \`../../scripts/hypothesis_knowledge.py\` or let \`run_match.py\` surface related entries;
+2. inspect prior hypotheses with matching mismatch families;
+3. prefer a new explanation when the same hypothesis was already rejected.
+
+The ledger stores mismatch families, match deltas, source diffs, command timings, Git state and an automatically generated lesson so experience can transfer between functions.
+
 ### User action constraints
 
 Before every mutating, build, compare, or expensive operation, extract the explicit constraints in the current request and treat them as active session constraints.
@@ -338,9 +366,9 @@ The build/compare logs record both the compiler exit code and the authoritative 
 5. Ask the coding agent to propose exactly one source change.
 6. Run ../../scripts/run_match.py --dry-run to verify the commands before execution.
 7. Apply the single source change.
-8. Run ../../scripts/run_match.py --force for one build/compare experiment.
-9. Parse the raw compare log with ../../scripts/parse_compare.py.
-10. Record the hypothesis, evidence, source change, result and first mismatch.
+8. Run ../../scripts/run_match.py --policy .decomp-agent/session-policy.json --require-policy --force for one build/compare experiment.
+9. Read the surfaced prior knowledge, then parse the raw compare log with ../../scripts/parse_compare.py.
+10. Record the hypothesis, evidence, source change, result, mismatch family and lesson.
 11. Repeat until exact match or a concrete blocker.
 
 The harness deliberately does not edit source or invent commands. The LLM is the reasoning layer; the scripts are the evidence, execution and audit layer.

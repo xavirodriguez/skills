@@ -16,6 +16,27 @@ PERCENT_PATTERNS = (
 ADDRESS = r"(?:0x)?[0-9a-fA-F]{4,16}"
 
 
+def classify_mismatch(raw: str) -> list[str]:
+    """Classify common machine-code mismatch families for hypothesis reuse."""
+    lowered = raw.lower()
+    rules = (
+        ("stack_layout", ("stack", "frame", "sp+", "sp -", "sp-")),
+        ("register_allocation", ("register", " r0", " r1", " r2", " r3", " r4", " r5", " r6", " r7")),
+        ("branch_layout", ("branch", "conditional", "jump", "goto", "control flow")),
+        ("load_store_width", ("load", "store", "byte", "halfword", "word", "sign extend", "zero extend")),
+        ("address_materialization", ("address", "offset", "symbol", "reloc")),
+        ("call_abi", ("call", "argument", "parameter", "calling convention", "abi")),
+        ("instruction_shape", ("instruction", "expression", "extra instruction", "missing instruction")),
+        ("linker_or_symbol", ("linker", "undefined reference", "relocation")),
+    )
+    tags = [
+        tag
+        for tag, keywords in rules
+        if any(keyword in lowered for keyword in keywords)
+    ]
+    return tags or ["unknown"]
+
+
 def parse_compare(raw: str) -> dict:
     percentages = []
     for pattern in PERCENT_PATTERNS:
@@ -47,6 +68,7 @@ def parse_compare(raw: str) -> dict:
         "build_failed": failed,
         "match_percent": max(percentages) if percentages else None,
         "first_mismatch": first_mismatch,
+        "mismatch_tags": classify_mismatch(raw),
         "evidence_lines": [
             line.strip()
             for line in raw.splitlines()

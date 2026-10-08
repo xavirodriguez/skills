@@ -1,6 +1,7 @@
 ---
 name: ghidra-evidence
 description: Read-only Ghidra/PyGhidra evidence collection for matching decompilation.
+compatibility: OpenCode and Codex
 ---
 
 # Ghidra Evidence

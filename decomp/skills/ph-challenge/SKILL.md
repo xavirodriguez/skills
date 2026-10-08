@@ -29,6 +29,15 @@ Use this skill when the goal is the decomp challenge, not merely general PH deco
 
 ## 1. Establish a clean baseline
 
+For autonomous challenge work, materialize the permission budget first:
+
+    <python> ../../scripts/session_policy.py init --mode challenge --force
+
+All autonomous selectors then receive:
+
+    --policy .decomp-agent/session-policy.json --require-policy
+
+
 Run the PH preflight first. Then follow the project's own README/INSTALL and verify a clean build.
 
 Record:
@@ -99,7 +108,7 @@ Then prepare the selected candidate:
       --reference-json .decomp-agent/reference/ph-analysis.json \
       --xmap-json .decomp-agent/xmap-ghidra.json
 
-The pack contains source, direct headers, objdiff output, Ghidra analysis and supporting evidence when supplied, plus a concise Codex prompt.
+The pack contains source, direct headers, objdiff output, Ghidra analysis and supporting evidence when supplied, plus a concise Codex prompt. It also surfaces reusable hypothesis lessons from previous functions when available.
 
 The final "real game logic" classification remains a review step; heuristics are evidence, not proof.
 

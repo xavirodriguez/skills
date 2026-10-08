@@ -4,6 +4,24 @@
   // Point this to the checked-out "decomp" directory in this repository.
   // Use an absolute path when the config is global.
   "skills": [
-    "D:/path/to/skills/decomp"
+    "D:/path/to/opencode-decomp-skills"
+  ],
+
+  // OpenCode V2 uses ordered permission rules.
+  // Keep skill loading allowed while requiring approval for arbitrary edits
+  // and shell commands. The repository session-policy file adds another gate
+  // for the decomp helper commands themselves.
+  "permissions": [
+    { "action": "skill", "resource": "ph-*", "effect": "allow" },
+    { "action": "skill", "resource": "matching-decomp", "effect": "allow" },
+    { "action": "skill", "resource": "ghidra-evidence", "effect": "allow" },
+    { "action": "skill", "resource": "reference-decomp", "effect": "allow" },
+    { "action": "skill", "resource": "xmap-analysis", "effect": "allow" },
+
+    { "action": "shell", "resource": "git push *", "effect": "deny" },
+    { "action": "shell", "resource": "git reset --hard *", "effect": "deny" },
+    { "action": "shell", "resource": "*", "effect": "ask" },
+    { "action": "edit", "resource": "*", "effect": "ask" },
+    { "action": "edit", "resource": ".decomp-agent/session-policy.json", "effect": "deny" }
   ]
 }

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from challenge import function_rows
+from session_policy import require_allowed
 
 
 def load(path: Path) -> dict[str, Any]:
@@ -122,11 +123,28 @@ def main() -> int:
     parser.add_argument("reference_json", type=Path)
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument(
+        "--require-policy",
+        action="store_true",
+        help="Fail when the session policy file is missing.",
+    )
+    parser.add_argument(
+        "--policy",
+        type=Path,
+        default=Path(".decomp-agent/session-policy.json"),
+        help="Session policy JSON; missing policy means no additional restriction.",
+    )
+
+    parser.add_argument(
         "--full-output",
         action="store_true",
         help="Print the full JSON even when --output is used.",
     )
     args = parser.parse_args()
+
+    try:
+        require_allowed(args.policy, "select", require_file=args.require_policy)
+    except (OSError, ValueError, PermissionError) as exc:
+        parser.error(str(exc))
 
     result = gate(load(args.objdiff_json), load(args.reference_json))
     rendered = json.dumps(result, indent=2, sort_keys=True)

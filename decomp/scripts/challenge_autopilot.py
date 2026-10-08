@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 from challenge import evaluate, load_json
+from session_policy import require_allowed
 
 
 def select_tier2(
@@ -61,11 +62,28 @@ def main() -> int:
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument("--write-packs", action="store_true")
     parser.add_argument(
+        "--require-policy",
+        action="store_true",
+        help="Fail when the session policy file is missing.",
+    )
+    parser.add_argument(
+        "--policy",
+        type=Path,
+        default=Path(".decomp-agent/session-policy.json"),
+        help="Session policy JSON; missing policy means no additional restriction.",
+    )
+
+    parser.add_argument(
         "--full-output",
         action="store_true",
         help="Print the full selection JSON instead of the compact summary.",
     )
     args = parser.parse_args()
+
+    try:
+        require_allowed(args.policy, "select", require_file=args.require_policy)
+    except (OSError, ValueError, PermissionError) as exc:
+        parser.error(str(exc))
 
     result = evaluate(
         load_json(args.report_json),
