@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from run_match import build_process_args, capture_git_state, derive_lesson
+from run_match import build_process_args, capture_git_state, contains_nested_agent_invocation, derive_lesson
 
 
 class RunMatchShellTests(unittest.TestCase):
@@ -66,6 +66,11 @@ class RunMatchTelemetryTests(unittest.TestCase):
         self.assertIn("+8.50", lesson)
         self.assertIn("stack_layout", lesson)
 
+    def test_nested_agent_invocation_is_rejected(self) -> None:
+        self.assertTrue(contains_nested_agent_invocation("codex.exe --help"))
+        self.assertTrue(contains_nested_agent_invocation(r".\\opencode.exe run"))
+        self.assertFalse(contains_nested_agent_invocation("ninja"))
+
     def test_timeout_command_uses_shell_contract(self) -> None:
         if sys.platform == "win32":
             command = "Start-Sleep -Seconds 2"
@@ -76,7 +81,7 @@ class RunMatchTelemetryTests(unittest.TestCase):
 
         from run_match import run
 
-        code, log, _, timed_out = run(
+        code, log, _, timed_out, tool_transport = run(
             command,
             Path(".").resolve(),
             shell,
@@ -84,6 +89,7 @@ class RunMatchTelemetryTests(unittest.TestCase):
         )
         self.assertEqual(code, 124)
         self.assertTrue(timed_out)
+        self.assertFalse(tool_transport)
         self.assertIn("timeout=", log)
 
 

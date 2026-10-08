@@ -122,6 +122,44 @@ class ChallengeBatchTests(unittest.TestCase):
             )
             self.assertEqual(session["queue"][0]["stagnation"], 1)
 
+    def test_tool_transport_failure_does_not_consume_stagnation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.json"
+            session = init_session(
+                path,
+                evaluation_for("A"),
+                tier="tier2",
+                quota=0,
+                max_stagnation=1,
+                replace=True,
+            )
+            session["queue"][0]["status"] = "active"
+            session["current_target"] = session["queue"][0]["key"]
+
+            for _ in range(5):
+                candidate = record_result(
+                    session,
+                    target="A",
+                    match_before=50.0,
+                    match_after=50.0,
+                    exact=False,
+                    mismatch=None,
+                    lesson="PowerShell transport failed",
+                    infrastructure_blocker=False,
+                    tool_transport_failure=True,
+                )
+
+            self.assertEqual(candidate["status"], "active")
+            self.assertEqual(candidate["stagnation"], 0)
+            self.assertEqual(candidate["attempts"], 0)
+            self.assertEqual(candidate["tool_failures"], 5)
+            self.assertFalse(session["halted"])
+            self.assertEqual(
+                session["history"][-1]["status"],
+                "tool-transport-failure",
+            )
+            self.assertFalse(session["history"][-1]["counted_as_stagnation"])
+
     def test_exact_match_clears_current_target(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "session.json"

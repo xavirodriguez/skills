@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -16,6 +17,27 @@ from hypothesis_knowledge import compact as compact_knowledge
 from hypothesis_knowledge import read_entries, search
 from parse_compare import parse_compare
 from session_policy import load_policy, require_allowed
+
+
+TOOL_TRANSPORT_EXIT = 5
+NESTED_AGENT_RE = re.compile(
+    r"(^|[\s\\\"/])(codex|opencode)(?:\.exe)?(?:[\s\\\"/]|$)",
+    re.IGNORECASE,
+)
+TOOL_TRANSPORT_MARKERS = (
+    "stdin is not a terminal",
+    "invalid patch:",
+    "the last line of the patch must be",
+)
+
+
+def contains_nested_agent_invocation(command: str) -> bool:
+    return bool(NESTED_AGENT_RE.search(command))
+
+
+def looks_like_tool_transport_failure(output: str) -> bool:
+    lowered = output.lower()
+    return any(marker in lowered for marker in TOOL_TRANSPORT_MARKERS)
 
 
 def build_process_args(command: str, shell: str) -> list[str]:
@@ -50,8 +72,15 @@ def run(
     cwd: Path,
     shell: str,
     timeout: float,
-) -> tuple[int, str, float, bool]:
+) -> tuple[int, str, float, bool, bool]:
     started = time.perf_counter()
+
+    if contains_nested_agent_invocation(command):
+        return TOOL_TRANSPORT_EXIT, (
+            f"$ [{shell}] {command}\n\n"
+            "[tool-transport-failure] nested agent invocation is forbidden\n"
+        ), 0.0, False, True
+
     try:
         process = subprocess.run(
             build_process_args(command, shell),
@@ -68,13 +97,23 @@ def run(
         return 124, (
             f"$ [{shell}] {command}\n\n{output}\n\n"
             f"[timeout={timeout}, exit=124, seconds={elapsed}]\n"
-        ), elapsed, True
+        ), elapsed, True, False
+    except OSError as exc:
+        elapsed = round(time.perf_counter() - started, 3)
+        return 127, (
+            f"$ [{shell}] {command}\n\n"
+            f"[infrastructure-error={exc}, exit=127, seconds={elapsed}]\n"
+        ), elapsed, False, False
 
     elapsed = round(time.perf_counter() - started, 3)
+    transport_failure = (
+        process.returncode != 0
+        and looks_like_tool_transport_failure(process.stdout)
+    )
     return process.returncode, (
         f"$ [{shell}] {command}\n\n{process.stdout}\n\n"
         f"[exit={process.returncode}, seconds={elapsed}]\n"
-    ), elapsed, False
+    ), elapsed, False, transport_failure
 
 
 def append_jsonl(path: Path, value: dict[str, Any]) -> None:
@@ -89,7 +128,7 @@ def run_compare(
     path: Path,
     timeout: float,
 ) -> tuple[int, str, dict[str, Any], float, bool]:
-    code, log, elapsed, timed_out = run(command, root, shell, timeout)
+    code, log, elapsed, timed_out, _tool_transport = run(command, root, shell, timeout)
     path.write_text(log, encoding="utf-8")
     return code, log, parse_compare(log), elapsed, timed_out
 
@@ -386,7 +425,7 @@ def main() -> int:
             compact_knowledge(knowledge),
         )
 
-        build_code, build_log, build_elapsed, build_timed_out = run(
+        build_code, build_log, build_elapsed, build_timed_out, build_tool_transport = run(
             args.build_command,
             root,
             shell,
@@ -410,8 +449,21 @@ def main() -> int:
                 args.compare_timeout,
             )
 
+        compare_tool_transport = False
+        if compare_code is not None:
+            compare_log_path = iteration_dir / f"{iteration_id}-compare.log"
+            if compare_log_path.is_file():
+                compare_tool_transport = looks_like_tool_transport_failure(
+                    compare_log_path.read_text(
+                        encoding="utf-8",
+                        errors="replace",
+                    )
+                )
+
         decision = "build-failed"
-        if compare_code is not None and compare_code == 0:
+        if build_tool_transport or compare_tool_transport:
+            decision = "tool-transport-failure"
+        elif compare_code is not None and compare_code == 0:
             if after.get("exact_match"):
                 if build_code == 0:
                     decision = "exact-match"
@@ -449,9 +501,11 @@ def main() -> int:
             "build_exit": build_code,
             "build_elapsed_seconds": build_elapsed,
             "build_timed_out": build_timed_out,
+            "build_tool_transport_failure": build_tool_transport,
             "compare_exit": compare_code,
             "compare_elapsed_seconds": compare_elapsed,
             "compare_timed_out": compare_timed_out,
+            "compare_tool_transport_failure": compare_tool_transport,
             "match_before": before_match,
             "match_after": after_match,
             "match_delta": delta,
@@ -473,6 +527,9 @@ def main() -> int:
         }
         append_jsonl(ledger, entry)
         previous_entries.append(entry)
+
+        if decision == "tool-transport-failure":
+            return TOOL_TRANSPORT_EXIT
 
         if build_code != 0:
             if (

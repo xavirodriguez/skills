@@ -92,6 +92,28 @@ The goal is not merely to understand a function. The goal is to reproduce the ta
 
 **Success criterion:** the project's authoritative comparison reports an exact match.
 
+## Execution guardrails
+
+Autonomous matching must use the repository helpers as the execution boundary. These are hard rules, not preferences:
+
+- Never invoke `codex`, `codex.exe`, `opencode` or another coding agent from inside the current agent session. A nested-agent attempt is a `tool-transport-failure` and must stop the current execution path without consuming candidate stagnation.
+- Never invoke `apply_patch` through PowerShell, cmd or another shell. For source edits, use `../../scripts/source_edit.py` with UTF-8 content/replacement files and an expected SHA-256 when editing an existing file.
+- After one edit-transport failure, do not retry the same mechanism. Switch to the canonical source-edit helper or stop if the helper itself is unavailable.
+- For an autonomous experiment, the build and compare MUST run through `../../scripts/run_match.py`. Do not launch compiler, linker or objdiff manually as part of the experiment loop.
+- Prefer `../../scripts/compare_target.py` for objdiff comparisons. It uses `objdiff-cli report generate -f json`, disables interactive stdin, and returns a structured target result.
+- A build/compare/edit transport problem is not evidence against the source hypothesis. Record it as `tool-transport-failure`; do not increment candidate stagnation and do not rotate to another hypothesis merely because the tooling invocation failed.
+- Inspect the source diff before building. The experiment must contain only the intended source change plus ignored `.decomp-agent/` telemetry.
+
+Canonical edit shape:
+
+    python ../../scripts/source_edit.py replace-text --project . --path <source.cpp> --old-file <old.txt> --new-file <new.txt> --expected-sha256 <sha256>
+
+Canonical experiment shape:
+
+    python ../../scripts/run_match.py --project . --target <function> --build-command "<authoritative build>" --compare-command "python ../../scripts/compare_target.py --project . --target <function> --objdiff-cli <objdiff-cli>" --policy .decomp-agent/session-policy.json --require-policy --force
+
+Do not replace these helpers with ad-hoc PowerShell, inline Python, interactive objdiff, or nested agent invocations.
+
 ## 0. Environment and shell preflight
 
 Before any helper or build command:

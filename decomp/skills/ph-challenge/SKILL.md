@@ -76,6 +76,18 @@ Do not use a fixed total experiment count as the stopping condition. Stop becaus
 - the current candidate is stagnant and has been auto-blocked, after which the next candidate is selected;
 - or a real infrastructure blocker halts the session.
 
+### Experiment execution guardrails
+
+For every candidate experiment, use this execution contract:
+
+1. Edit source only through `../../scripts/source_edit.py`; never call `apply_patch` from a shell and never invoke another coding agent.
+2. Build and compare only through `../../scripts/run_match.py`.
+3. Prefer `../../scripts/compare_target.py` as the compare command so objdiff runs in report/JSON mode instead of an interactive diff UI.
+4. A transport/tooling failure is recorded with `challenge_batch.py record --tool-transport-failure`. It keeps the target active and does not consume stagnation.
+5. Only compiler/linker failures caused by the current source hypothesis and authoritative compare deltas count as experiment evidence.
+
+The agent must not use a direct `objdiff-cli diff` invocation in the autonomous loop.
+
 ## Candidate ranking
 
 The selector exposes `expected_value_score` in addition to `success_score`, `game_logic_score` and `complexity_score`.
