@@ -1,6 +1,7 @@
 ---
 name: matching-decomp
 description: Analyze legacy game binaries with Ghidra/PyGhidra and iteratively reconstruct C/C++ until the project's exact build produces a matching object or binary. Use for ARM/Thumb, MIPS, PowerPC, x86 and legacy compilers such as agbcc, IDO, MWCC and old GCC.
+compatibility: OpenCode and Codex
 ---
 
 # Matching Decompilation
@@ -64,8 +65,8 @@ Before any helper or build command:
 - identify OS and active shell;
 - identify a usable Python interpreter;
 - identify Ghidra headless, Ninja/Make and objdiff when applicable;
-- run `decomp/scripts/preflight.py` when Python is available;
-- on Windows without Python, run `decomp/scripts/preflight.ps1` first.
+- run `../../scripts/preflight.py` when Python is available;
+- on Windows without Python, run `../../scripts/preflight.ps1` first.
 
 Never assume `python3` on Windows.
 
@@ -91,8 +92,8 @@ Do not assume ELF, x86_64, Ninja, or a particular compare command.
 
 For repeatable work, use the repository helpers when available:
 
-- `decomp/scripts/analyze_function.py` for a structured JSON evidence snapshot;
-- `decomp/scripts/scout_functions.py` to rank practical first targets. Its preferred signals are known `nonmatching` status, small instruction count, resolved signatures, few globals, simple CFG, nearby matching functions, existing structures/types, and absence of known problematic constructs.
+- `../../scripts/analyze_function.py` for a structured JSON evidence snapshot;
+- `../../scripts/scout_functions.py` to rank practical first targets. Its preferred signals are known `nonmatching` status, small instruction count, resolved signatures, few globals, simple CFG, nearby matching functions, existing structures/types, and absence of known problematic constructs.
 
 Keep the raw JSON artifact for the iteration ledger. It makes later hypotheses reproducible instead of relying on screenshots or transient Ghidra state.
 
@@ -312,7 +313,7 @@ When a project has a final ROM/hash check that fails after the required object f
 
 Example on PH:
 
-    <python> <skills>/decomp/scripts/run_match.py \
+    <python> ../../scripts/run_match.py \
       --project . \
       --target <function> \
       --shell powershell \
@@ -325,15 +326,15 @@ Example on PH:
 The build/compare logs record both the compiler exit code and the authoritative function comparison result.
 
 
-1. Run decomp/scripts/inspect_project.py and save its JSON as the project baseline.
+1. Run ../../scripts/inspect_project.py and save its JSON as the project baseline.
 2. Identify the authoritative build and compare commands from the project itself.
 3. Scout candidates with Ghidra.
-4. Run decomp/scripts/analyze_function.py for one target and save its JSON evidence.
+4. Run ../../scripts/analyze_function.py for one target and save its JSON evidence.
 5. Ask the coding agent to propose exactly one source change.
-6. Run decomp/scripts/run_match.py --dry-run to verify the commands before execution.
+6. Run ../../scripts/run_match.py --dry-run to verify the commands before execution.
 7. Apply the single source change.
-8. Run decomp/scripts/run_match.py --force for one build/compare experiment.
-9. Parse the raw compare log with decomp/scripts/parse_compare.py.
+8. Run ../../scripts/run_match.py --force for one build/compare experiment.
+9. Parse the raw compare log with ../../scripts/parse_compare.py.
 10. Record the hypothesis, evidence, source change, result and first mismatch.
 11. Repeat until exact match or a concrete blocker.
 
