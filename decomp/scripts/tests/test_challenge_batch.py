@@ -218,6 +218,7 @@ class ChallengeBatchTests(unittest.TestCase):
                         "padding": {"before": [], "after": []},
                         "next_boundary": "0x801",
                         "evidence": ["xMAP", "link map"],
+                        "verification": {"status": "pass", "function_match_percent": 100.0, "command": "ninja check"},
                     }
                 },
             }
