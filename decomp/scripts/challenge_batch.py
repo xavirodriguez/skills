@@ -166,6 +166,9 @@ def init_session(
 
 
 def choose_next(session: dict[str, Any]) -> dict[str, Any] | None:
+    if session.get("halted"):
+        return None
+
     current_key = session.get("current_target")
     queue = session.get("queue", [])
 
@@ -199,6 +202,10 @@ def choose_next(session: dict[str, Any]) -> dict[str, Any] | None:
 def claim_next(session: dict[str, Any]) -> dict[str, Any] | None:
     candidate = choose_next(session)
     if candidate is None:
+        if not session.get("halted"):
+            session["halted"] = True
+            session["stop_reason"] = "no-eligible-candidates"
+            session["updated_at"] = now_utc()
         return None
 
     candidate["status"] = "active"
@@ -427,6 +434,7 @@ def main() -> int:
     record.add_argument("--scout", type=Path)
     record.add_argument("--reference", type=Path)
     record.add_argument("--shell", choices=("powershell", "pwsh", "bash", "cmd"), default="powershell")
+    record.add_argument("--refresh-timeout", type=float, default=1800)
     record.add_argument(
         "--policy",
         type=Path,
@@ -442,6 +450,7 @@ def main() -> int:
     refresh.add_argument("--scout", type=Path)
     refresh.add_argument("--reference", type=Path)
     refresh.add_argument("--shell", choices=("powershell", "pwsh", "bash", "cmd"), default="powershell")
+    refresh.add_argument("--refresh-timeout", type=float, default=1800)
     refresh.add_argument(
         "--policy",
         type=Path,
@@ -458,6 +467,9 @@ def main() -> int:
     status.add_argument("--session", type=Path, default=Path(".decomp-agent/challenge/session.json"))
 
     args = parser.parse_args()
+
+    if hasattr(args, "refresh_timeout") and args.refresh_timeout <= 0:
+        parser.error("--refresh-timeout must be > 0")
 
     if args.command in {"init", "sync"}:
         try:
