@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from challenge_batch import (
     choose_next,
     init_session,
+    load_session,
     record_integration,
     record_result,
 )
@@ -43,6 +44,19 @@ def evaluation_for(*names: str) -> dict:
 
 
 class ChallengeBatchTests(unittest.TestCase):
+    def test_v1_session_migrates_without_losing_matched_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.json"
+            path.write_text(json.dumps({
+                "format": "decomp-challenge-session-v1",
+                "matches_completed": 2,
+                "queue": [{"name": "A", "status": "matched"}],
+            }), encoding="utf-8")
+            session = load_session(path)
+            self.assertEqual(session["format"], "decomp-challenge-session-v2")
+            self.assertEqual(session["function_matches_completed"], 2)
+            self.assertEqual(session["integration_matches_completed"], 2)
+            self.assertEqual(session["queue"][0]["integration"]["status"], "legacy-accepted")
     def test_queue_persists_and_selects_expected_value(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "session.json"
