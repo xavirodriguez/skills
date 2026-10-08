@@ -33,6 +33,25 @@ class PrepareCandidateTests(unittest.TestCase):
             self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["name"], "UpdateEnemy")
 
 
+    def test_prompt_uses_explicit_function_location_fields(self) -> None:
+        prompt = make_prompt({
+            "name": "UpdateEnemy",
+            "function_entry": "0x1000",
+            "function_size": 1024,
+            "translation_unit": "Enemy.cpp",
+            "match_percent": 0,
+            "scout": {},
+            "reference": {},
+        })
+        self.assertIn("function entry: 0x1000", prompt)
+        self.assertIn("function size: 1024 bytes", prompt)
+        self.assertIn("translation unit: Enemy.cpp", prompt)
+
+    def test_candidate_preparation_has_no_objdiff_cli_dependency(self) -> None:
+        source = Path(__file__).resolve().parents[1] / "prepare_candidate.py"
+        text = source.read_text(encoding="utf-8")
+        self.assertNotIn("objdiff-cli", text)
+        self.assertNotIn("subprocess", text)
     def test_prompt_includes_prior_lesson_without_full_ledger(self) -> None:
         prompt = make_prompt(
             {
