@@ -253,7 +253,11 @@ def select(
     for row in rows:
         if not row.get("match_available"):
             continue
-        if row["match_percent"] > 0.0 or not row.get("size") or row["size"] <= 0:
+        if row["match_percent"] > 0.0 or not row.get("size") or row["size"] <= 4:
+            continue
+
+        non_logic, non_logic_reason = obvious_non_logic(str(row["name"]))
+        if non_logic:
             continue
 
         scout_item = find_scout(row, index)
@@ -262,7 +266,6 @@ def select(
             from source_inventory import lookup
             source_info = lookup(source_map, str(row["name"]))
         ref = reference_status(reference, row)
-        non_logic, non_logic_reason = obvious_non_logic(str(row["name"]))
         ease, ease_reasons = score_ease(row, scout_item, source_info, ref)
         impact, impact_reasons = score_impact(row, scout_item, ref, source_info)
         unlock, unlock_reasons = score_unlock(row, scout_item, ref)
