@@ -37,6 +37,19 @@ After inspection, build:
 
 Run `candidate_gate.py` before choosing a function. Do not interpret an incomplete objdiff unit as proof that all functions in its translation unit need decompilation.
 
+For Phantom Hourglass challenge Tier 2, use the targeted Ghidra scout plus the autopilot:
+
+    <ghidra> ... -postScript tier2_ghidra_scout.py .decomp-agent/challenge/report.json > .decomp-agent/challenge/tier2-scout.json
+
+    <python> <skills>/decomp/scripts/challenge_autopilot.py \
+      .decomp-agent/challenge/report.json \
+      --scout .decomp-agent/challenge/tier2-scout.json \
+      --project . \
+      --objdiff-json objdiff.json \
+      --objdiff-cli .\\objdiff-cli.exe \
+      --write-packs
+
+This enforces the objective Tier 2 gates from the current report and produces a candidate pack with objdiff evidence and a Codex-ready prompt. It does not pretend that heuristics prove semantic "game logic"; that final classification remains a review step.
 
 The workflow is split into safe, reproducible stages:
 
