@@ -37,7 +37,7 @@ Create it at the start of an autonomous workflow:
 
 Supported modes are \`explain\`, \`inspect\`, \`analyze\`, \`target-match\`, \`select\` and \`challenge\`.
 
-Helpers enforce the policy when they receive \`--policy\`. In particular:
+Autonomous helpers enforce the policy when they receive \`--policy\` and \`--require-policy\`. In particular:
 - \`run_match.py\` enforces \`build\` and \`compare\`;
 - \`challenge.py\`, \`challenge_autopilot.py\`, \`challenge_selector.py\` and \`candidate_gate.py\` enforce \`select\`.
 
@@ -366,7 +366,7 @@ The build/compare logs record both the compiler exit code and the authoritative 
 5. Ask the coding agent to propose exactly one source change.
 6. Run ../../scripts/run_match.py --dry-run to verify the commands before execution.
 7. Apply the single source change.
-8. Run ../../scripts/run_match.py --policy .decomp-agent/session-policy.json --force for one build/compare experiment.
+8. Run ../../scripts/run_match.py --policy .decomp-agent/session-policy.json --require-policy --force for one build/compare experiment.
 9. Read the surfaced prior knowledge, then parse the raw compare log with ../../scripts/parse_compare.py.
 10. Record the hypothesis, evidence, source change, result, mismatch family and lesson.
 11. Repeat until exact match or a concrete blocker.
