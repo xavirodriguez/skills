@@ -6,6 +6,11 @@ compatibility: OpenCode and Codex
 
 # Reference Decompilation
 
+
+## Helper path resolution
+
+Helper paths such as `../../scripts/<helper>` are relative to the directory containing this `SKILL.md`. Resolve them against the skill base directory before passing them to the shell or Ghidra. Do not rely on the target project's current working directory.
+
 Use this skill when an existing project for the same game, version, or executable contains decompiled source.
 
 The reference is **context and prior work, not match authority**. Its source should prevent duplicated effort, while the target ROM/binary and authoritative comparison remain the proof.
