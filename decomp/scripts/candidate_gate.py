@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from pathlib import Path
 from typing import Any
 
@@ -99,17 +98,44 @@ def gate(objdiff: dict[str, Any], reference: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def compact_summary(result: dict[str, Any]) -> dict[str, Any]:
+    summary = result["summary"]
+    actions: dict[str, int] = {}
+    for item in result["functions"]:
+        action = str(item.get("action", "unknown"))
+        actions[action] = actions.get(action, 0) + 1
+
+    return {
+        "format": result["format"],
+        "status": "written",
+        "target_incomplete_functions": summary["target_incomplete_functions"],
+        "reference_matches": summary["reference_matches"],
+        "reuse_reference": summary["reuse_reference"],
+        "new_target_analysis": summary["new_target_analysis"],
+        "actions": dict(sorted(actions.items())),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("objdiff_json", type=Path)
     parser.add_argument("reference_json", type=Path)
     parser.add_argument("-o", "--output", type=Path)
+    parser.add_argument(
+        "--full-output",
+        action="store_true",
+        help="Print the full JSON even when --output is used.",
+    )
     args = parser.parse_args()
 
     result = gate(load(args.objdiff_json), load(args.reference_json))
     rendered = json.dumps(result, indent=2, sort_keys=True)
     if args.output:
         args.output.write_text(rendered + "\n", encoding="utf-8")
+        if args.full_output:
+            print(rendered)
+        else:
+            print(json.dumps(compact_summary(result), indent=2, sort_keys=True))
     else:
         print(rendered)
     return 0
