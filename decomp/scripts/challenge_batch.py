@@ -14,7 +14,7 @@ from challenge import evaluate, load_json
 from session_policy import require_allowed
 
 
-SESSION_FORMAT = "decomp-challenge-session-v1"
+SESSION_FORMAT = "decomp-challenge-session-v2"
 DEFAULT_MAX_STAGNATION = 3
 
 
@@ -25,7 +25,24 @@ def now_utc() -> str:
 def load_session(path: Path) -> dict[str, Any]:
     if not path.is_file():
         raise FileNotFoundError(f"Session file not found: {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
+    session = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(session, dict):
+        raise ValueError(f"Invalid session object: {path}")
+    if session.get("format") == "decomp-challenge-session-v1":
+        session["format"] = SESSION_FORMAT
+        session.setdefault("phase", "matching")
+        session.setdefault("function_matches_completed", int(session.get("matches_completed") or 0))
+        session.setdefault("integration_matches_completed", int(session.get("matches_completed") or 0))
+        for item in session.get("queue", []):
+            if isinstance(item, dict):
+                item.setdefault("tool_failures", 0)
+                if item.get("status") == "matched":
+                    item.setdefault("integration", {
+                        "status": "legacy-accepted",
+                        "note": "Match predates explicit integration state.",
+                    })
+        session["updated_at"] = now_utc()
+    return session
 
 
 def save_session(path: Path, session: dict[str, Any]) -> None:
