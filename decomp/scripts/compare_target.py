@@ -55,10 +55,16 @@ def function_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
                 continue
             fuzzy = fn.get("fuzzy_match_percent")
             complete = fn.get("complete") is True
-            try:
-                match = 100.0 if complete else float(fuzzy or 0.0)
-            except (TypeError, ValueError):
-                match = 0.0
+            match_available = complete
+            match: float | None
+            if complete:
+                match = 100.0
+            else:
+                try:
+                    match = float(fuzzy) if fuzzy is not None else None
+                except (TypeError, ValueError):
+                    match = None
+                match_available = match is not None
             function_entry = fn.get("address")
             function_size = fn.get("size")
             translation_unit = unit.get("name")
@@ -71,6 +77,7 @@ def function_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
                 "address": function_entry,
                 "size": function_size,
                 "match_percent": match,
+                "match_available": match_available,
                 "complete": complete,
                 "unit": translation_unit,
             })
@@ -225,6 +232,21 @@ def main() -> int:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 4
 
+    if not row["match_available"]:
+        payload = {
+            "status": "compare-incomplete",
+            "reason": "Target row has no authoritative match percentage and is not marked complete.",
+            "target": args.target,
+            "name": row["name"],
+            "report": str(report_path),
+        }
+        rendered = json.dumps(payload, indent=2, sort_keys=True)
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(rendered + "\n", encoding="utf-8")
+        print(rendered)
+        return 4
+
     payload = {
         "status": "matched" if row["match_percent"] >= 100.0 else "compare-ran",
         "target": args.target,
@@ -236,6 +258,7 @@ def main() -> int:
         "address": row["function_entry"],
         "size": row["function_size"],
         "match_percent": row["match_percent"],
+        "match_available": row["match_available"],
         "exact_match": row["match_percent"] >= 100.0,
         "complete": row["complete"],
         "unit": row["unit"],
