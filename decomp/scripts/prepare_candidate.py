@@ -237,18 +237,35 @@ def main() -> int:
                     ) + "\n",
                     encoding="utf-8",
                 )
-                (evidence_dir / "pcode.txt").write_text(
-                    "\n".join(
-                        str(item.get("address", "")) + "  " +
-                        "\n".join(
-                            "  " + str(op)
-                            for ins in item.get("pcode", [])
-                            for op in [op]
+                pcode_lines = []
+                for item in instructions:
+                    address = str(item.get("address", ""))
+                    for op in item.get("pcode", []):
+                        inputs = ", ".join(
+                            str(value.get("text", "")) for value in op.get("inputs", [])
                         )
-                        for item in instructions
-                    ) + "\n",
+                        output = str(op.get("output") or "")
+                        if output:
+                            pcode_lines.append(
+                                address + "  " + output + " = " +
+                                str(op.get("op", "")) + "(" + inputs + ")"
+                            )
+                        else:
+                            pcode_lines.append(
+                                address + "  " + str(op.get("op", "")) +
+                                "(" + inputs + ")"
+                            )
+                (evidence_dir / "pcode.txt").write_text(
+                    "\n".join(pcode_lines) + "\n",
                     encoding="utf-8",
                 )
+                decompile_c = analysis.get("decompile_c")
+                if decompile_c:
+                    (evidence_dir / "decompile.c").write_text(
+                        str(decompile_c),
+                        encoding="utf-8",
+                    )
+                    manifest["files"]["decompile"] = "evidence/decompile.c"
                 (evidence_dir / "cfg.json").write_text(
                     json.dumps(cfg, indent=2, sort_keys=True) + "\n",
                     encoding="utf-8",
