@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from challenge_autopilot import select_tier2
+from challenge_autopilot import compact_summary, select_tier2
 
 
 class Tier2AutopilotTests(unittest.TestCase):
@@ -83,6 +83,31 @@ class Tier2AutopilotTests(unittest.TestCase):
         result = select_tier2(report, scout)
         self.assertEqual([item["name"] for item in result["eligible"]], ["Logic"])
 
+
+    def test_compact_summary_limits_candidate_context(self) -> None:
+        result = {
+            "format": "decomp-challenge-v2",
+            "summary": {
+                "remaining_functions": 10,
+                "undecompiled_functions": 8,
+                "p75_bytes": 400.0,
+                "tier2_threshold_bytes": 400,
+                "eligible_candidates": 6,
+            },
+            "tier2": {
+                "candidates": [
+                    {"name": "A", "size": 500, "success_score": 90, "game_logic_score": 80},
+                    {"name": "B", "size": 450, "success_score": 85, "game_logic_score": 75},
+                    {"name": "C", "size": 420, "success_score": 80, "game_logic_score": 70},
+                    {"name": "D", "size": 410, "success_score": 75, "game_logic_score": 65},
+                    {"name": "E", "size": 405, "success_score": 70, "game_logic_score": 60},
+                    {"name": "F", "size": 401, "success_score": 65, "game_logic_score": 55},
+                ]
+            },
+        }
+        summary = compact_summary(result)
+        self.assertEqual(len(summary["top_tier2"]), 5)
+        self.assertEqual(summary["top_tier2"][0]["name"], "A")
 
 if __name__ == "__main__":
     unittest.main()
