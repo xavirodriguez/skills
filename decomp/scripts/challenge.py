@@ -295,6 +295,7 @@ def evaluate(
         candidate = {
             **row,
             "match_kind": match_kind(row, source_info),
+            "source_exists": source_info is not None,
             "source": source_info,
             "reference": ref,
             "scout": evidence,
@@ -323,8 +324,8 @@ def evaluate(
         item for item in all_evaluated
         if (item.get("size") or 0) >= 8
         and not item["logic_screen"]["name_reason"]
-        and not item["gates"]["not_accessor"] is False
-        and not item["gates"]["not_thunk"] is False
+        and item["gates"]["not_accessor"]
+        and item["gates"]["not_thunk"]
     ]
     tier1.sort(key=lambda x: ((x.get("size") or 0), -x["success_score"], x["name"]))
 
