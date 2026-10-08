@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from session_policy import default_policy, is_allowed, load_policy
+from session_policy import default_policy, is_allowed, load_policy, require_allowed
 
 
 class SessionPolicyTests(unittest.TestCase):
@@ -35,7 +35,17 @@ class SessionPolicyTests(unittest.TestCase):
             policy = load_policy(path)
             self.assertTrue(is_allowed(policy, "read"))
             self.assertFalse(is_allowed(policy, "build"))
-            self.assertTrue(is_allowed(policy, "analyze") is False)
+            self.assertFalse(is_allowed(policy, "analyze"))
+
+
+    def test_required_missing_policy_is_a_hard_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(PermissionError):
+                require_allowed(
+                    Path(tmp) / "missing.json",
+                    "build",
+                    require_file=True,
+                )
 
 
 if __name__ == "__main__":
