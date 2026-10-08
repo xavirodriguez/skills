@@ -130,30 +130,37 @@ def capture_git_state(root: Path) -> dict[str, Any]:
 
     _, head = git_run(root, ["rev-parse", "HEAD"])
     _, status = git_run(root, ["status", "--porcelain=v1", "--untracked-files=all"])
-    _, diff_stat = git_run(
-        root,
-        ["diff", "--stat", "--", ".", ":(exclude).decomp-agent/**"],
-    )
-    _, diff_name_status = git_run(
-        root,
-        ["diff", "--name-status", "--", ".", ":(exclude).decomp-agent/**"],
-    )
+    _, diff_stat = git_run(root, ["diff", "HEAD", "--stat"])
+    _, diff_name_status = git_run(root, ["diff", "HEAD", "--name-status"])
     _, diff_text = git_run(
         root,
-        ["diff", "--no-ext-diff", "--unified=3", "--", ".", ":(exclude).decomp-agent/**"],
+        ["diff", "HEAD", "--no-ext-diff", "--unified=3"],
     )
 
     filtered_status = filtered_status_lines(status)
+    filtered_diff_stat = "\n".join(
+        line for line in diff_stat.splitlines() if ".decomp-agent/" not in line
+    )
+    filtered_diff_name_status = [
+        line
+        for line in diff_name_status.splitlines()
+        if ".decomp-agent/" not in line
+    ]
+    filtered_diff_text = "\n".join(
+        line for line in diff_text.splitlines() if ".decomp-agent/" not in line
+    )
+
     return {
         "available": True,
         "head": head.strip(),
         "dirty": bool(filtered_status),
         "changed_files": filtered_status,
-        "diff_stat": diff_stat.strip(),
-        "diff_name_status": diff_name_status.strip().splitlines(),
-        "diff_hash": hashlib.sha256(diff_text.encode("utf-8")).hexdigest(),
+        "diff_stat": filtered_diff_stat.strip(),
+        "diff_name_status": filtered_diff_name_status,
+        "diff_hash": hashlib.sha256(
+            filtered_diff_text.encode("utf-8")
+        ).hexdigest(),
     }
-
 
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -166,10 +173,12 @@ def write_json(path: Path, value: Any) -> None:
 def write_source_diff(root: Path, path: Path) -> None:
     _, diff_text = git_run(
         root,
-        ["diff", "--no-ext-diff", "--unified=3", "--", ".", ":(exclude).decomp-agent/**"],
+        ["diff", "HEAD", "--no-ext-diff", "--unified=3"],
     )
-    path.write_text(diff_text, encoding="utf-8")
-
+    filtered = "\n".join(
+        line for line in diff_text.splitlines() if ".decomp-agent/" not in line
+    )
+    path.write_text(filtered, encoding="utf-8")
 
 def derive_lesson(
     before: dict[str, Any],
