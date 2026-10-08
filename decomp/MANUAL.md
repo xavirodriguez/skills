@@ -181,6 +181,23 @@ Important: this harness executes commands but intentionally does not edit source
 
 The parser is conservative and best-effort. Treat its result as extracted evidence, not authoritative semantics.
 
+## Function exactness versus integration
+
+A function-level 100% result is recorded as `MATCH_EXACT`, then the same candidate enters `INTEGRATION_CHECK`. The batch must not advance to another candidate until integration passes.
+
+The integration check verifies the containing object/link layout, including delink range ownership and any padding that explains downstream address movement.
+
+Keep these coordinates separate:
+
+    function.entry / function.size
+    translation_unit / object
+    integration.range.start / integration.range.end
+    padding.before / padding.after
+
+For more than one region (for example USA and EUR), every region needs independent evidence. Do not mirror a range change from another region.
+
+Record a successful integration with the batch controller and retain the structured evidence under `.decomp-agent/integration/`.
+
 ## 10. Recommended agent loop
 
     inspect
