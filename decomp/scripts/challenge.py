@@ -448,6 +448,8 @@ def file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report_json", type=Path)
@@ -517,7 +519,8 @@ def main() -> int:
             "sha256": file_sha256(reference_path),
         }
 
-    rendered = json.dumps(result, indent=2, sort_keys=True)    if args.output:
+    rendered = json.dumps(result, indent=2, sort_keys=True)
+    if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered + "\n", encoding="utf-8")
         if args.full_output:
