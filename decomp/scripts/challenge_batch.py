@@ -246,6 +246,7 @@ def record_result(
         candidate["last_failure"] = "tool-transport-failure"
     elif exact or match_after >= 100.0:
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
+        candidate.pop("last_failure", None)
         candidate["status"] = "matched"
         candidate["stagnation"] = 0
         candidate["matched_at"] = now_utc()
@@ -260,10 +261,12 @@ def record_result(
         session["stop_reason"] = "infrastructure-blocker"
     elif match_after > match_before:
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
+        candidate.pop("last_failure", None)
         candidate["status"] = "active"
         candidate["stagnation"] = 0
     else:
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
+        candidate.pop("last_failure", None)
         candidate["status"] = "active"
         candidate["stagnation"] = int(candidate.get("stagnation") or 0) + 1
         if candidate["stagnation"] >= int(session.get("max_stagnation") or DEFAULT_MAX_STAGNATION):
