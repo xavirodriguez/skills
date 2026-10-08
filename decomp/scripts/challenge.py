@@ -228,13 +228,38 @@ def scores(
     logic -= 50.0 if non_logic else 0.0
     logic = max(0.0, min(100.0, logic))
 
+    complexity_score = round(
+        min(
+            100.0,
+            size / 2048.0 * 50.0
+            + blocks * 1.5
+            + conditional * 1.5
+            + stores
+            + globals_count,
+        ),
+        2,
+    )
+    ease_score = 100.0 - complexity_score
+    size_value = min(100.0, size / max(1.0, 256.0) * 25.0)
+    expected_value_score = round(
+        max(
+            0.0,
+            min(
+                100.0,
+                max(0.0, min(100.0, success)) * 0.55
+                + logic * 0.20
+                + ease_score * 0.15
+                + size_value * 0.10,
+            ),
+        ),
+        2,
+    )
+
     return {
         "success_score": round(max(0.0, min(100.0, success)), 2),
         "game_logic_score": round(logic, 2),
-        "complexity_score": round(
-            min(100.0, size / 2048.0 * 50.0 + blocks * 1.5 + conditional * 1.5 + stores + globals_count),
-            2,
-        ),
+        "complexity_score": complexity_score,
+        "expected_value_score": expected_value_score,
     }
 
 
@@ -317,7 +342,13 @@ def evaluate(
 
     all_evaluated = candidates + rejected
     candidates.sort(
-        key=lambda x: (-x["success_score"], -x["game_logic_score"], -(x["size"] or 0), x["name"])
+        key=lambda x: (
+            -x["expected_value_score"],
+            -x["success_score"],
+            -x["game_logic_score"],
+            -(x["size"] or 0),
+            x["name"],
+        )
     )
     rejected.sort(
         key=lambda x: (-x["game_logic_score"], -(x["size"] or 0), x["name"])
@@ -400,6 +431,7 @@ def compact_summary(result: dict[str, Any]) -> dict[str, Any]:
                 "size": item.get("size"),
                 "success_score": item.get("success_score"),
                 "game_logic_score": item.get("game_logic_score"),
+                "expected_value_score": item.get("expected_value_score"),
             }
             for item in candidates[:5]
         ],
