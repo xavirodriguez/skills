@@ -283,9 +283,16 @@ def evaluate(
     index = scout_index(scout)
     source_map = index_sources(project) if project else {}
 
+    unavailable = [
+        row for row in rows
+        if not row.get("match_available") and row["size"] and row["size"] > 0
+    ]
     remaining = [
         row for row in rows
-        if row["match_percent"] < 100.0 and row["size"] and row["size"] > 0
+        if row.get("match_available")
+        and row["match_percent"] < 100.0
+        and row["size"]
+        and row["size"] > 0
     ]
     undecompiled = [row for row in remaining if row["match_percent"] <= 0.0]
     p75 = percentile75([row["size"] for row in undecompiled if row["size"]])
@@ -383,6 +390,7 @@ def evaluate(
         "format": "decomp-challenge-v2",
         "summary": {
             "total_functions": len(rows),
+            "unavailable_match_data_functions": len(unavailable),
             "matched_functions": sum(1 for row in rows if row["match_percent"] >= 100.0),
             "partial_functions": sum(1 for row in rows if 0.0 < row["match_percent"] < 100.0),
             "remaining_functions": len(remaining),
@@ -409,19 +417,6 @@ def evaluate(
     }
 
 
-def run_objdiff(objdiff_cli: Path, project: Path, symbol: str) -> tuple[int, str]:
-    result = subprocess.run(
-        [str(objdiff_cli), "diff", "-p", str(project), symbol],
-        cwd=project,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-    )
-    return result.returncode, result.stdout
-
-
-
 def compact_summary(result: dict[str, Any]) -> dict[str, Any]:
     summary = result["summary"]
     candidates = result.get("tier2", {}).get("candidates", [])
@@ -429,6 +424,7 @@ def compact_summary(result: dict[str, Any]) -> dict[str, Any]:
         "format": result["format"],
         "status": "written",
         "remaining_functions": summary["remaining_functions"],
+        "unavailable_match_data_functions": summary.get("unavailable_match_data_functions", 0),
         "undecompiled_functions": summary["undecompiled_functions"],
         "p75_bytes": summary["p75_bytes"],
         "tier2_threshold_bytes": summary["tier2_threshold_bytes"],
