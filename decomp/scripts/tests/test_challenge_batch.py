@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from challenge_batch import (
     choose_next,
+    finalize_integrated_target,
     init_session,
     load_session,
     record_integration,
@@ -296,7 +297,13 @@ class ChallengeBatchTests(unittest.TestCase):
                 evidence=integration,
                 lesson="Object range verified.",
             )
-            self.assertEqual(result["status"], "matched")
+            self.assertEqual(result["status"], "integration-passed")
+            self.assertEqual(session["current_target"], candidate["key"])
+            self.assertEqual(session["phase"], "refresh-required")
+            self.assertEqual(session["matches_completed"], 0)
+
+            finalized = finalize_integrated_target(session, target="A")
+            self.assertEqual(finalized["status"], "matched")
             self.assertIsNone(session["current_target"])
             self.assertEqual(session["matches_completed"], 1)
             self.assertTrue(session["halted"])
