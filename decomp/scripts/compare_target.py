@@ -147,10 +147,8 @@ def run_report(
 
     elapsed = time.perf_counter() - started
     output = (
-        f"{process.stdout}
-"
-        f"[exit={process.returncode}, seconds={elapsed:.3f}]
-"
+        f"{process.stdout}\\n"
+        f"[exit={process.returncode}, seconds={elapsed:.3f}]\\n"
     )
     return process.returncode, output, False, False
 
