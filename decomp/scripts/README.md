@@ -1,5 +1,10 @@
 # Ghidra matching helpers
 
+## Context-friendly output
+
+Large analysis/selection artifacts should be written with `-o` into `.decomp-agent/`. `candidate_gate.py` and `challenge.py` keep the full JSON on disk and print a compact summary when `-o` is supplied. Use `--full-output` only when the complete JSON is explicitly needed on stdout.
+
+
 These scripts are intentionally read-only: they turn Ghidra's analysis into structured evidence for a matching-decomp workflow.
 
 ## `analyze_function.py`
