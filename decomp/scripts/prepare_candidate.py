@@ -111,6 +111,7 @@ def make_prompt(
         "globals": scout.get("globals"),
         "signature": scout.get("signature", ""),
         "reference_action": reference.get("recommended_action"),
+        "prior_lessons": prior_lessons,
     }
     return """# Decomp candidate: {name}
 
