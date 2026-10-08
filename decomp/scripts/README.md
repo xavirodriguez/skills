@@ -93,3 +93,25 @@ For a first target:
     parse_compare.py <raw-log>
 
 See decomp/MANUAL.md for the complete Klonoa workflow and safety rules.
+
+
+## Tier 2 challenge automation
+
+For Phantom Hourglass Tier 2, use the targeted Ghidra scout and autopilot instead of the generic top-100 scout:
+
+    analyzeHeadless <project-dir> <project-name> -process <program> \
+      -scriptPath decomp/scripts \
+      -postScript tier2_ghidra_scout.py .decomp-agent/challenge/report.json \
+      > .decomp-agent/challenge/tier2-scout.json
+
+Then:
+
+    python decomp/scripts/challenge_autopilot.py \
+      .decomp-agent/challenge/report.json \
+      --scout .decomp-agent/challenge/tier2-scout.json \
+      --project . \
+      --objdiff-json objdiff.json \
+      --objdiff-cli .\\objdiff-cli.exe \
+      --write-packs
+
+The autopilot computes the project's remaining undecompiled P75, enforces the 256-byte floor and control-flow gates, rejects common accessor/stub/table/initializer shapes, and writes Codex-ready candidate packs. It does not modify source code and does not claim that heuristics prove game logic.

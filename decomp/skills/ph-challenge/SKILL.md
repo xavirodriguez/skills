@@ -30,36 +30,51 @@ For the selector, preserve the report as:
 
     .decomp-agent/challenge/report.json
 
-## 3. Generate Ghidra evidence
+## 3. Generate targeted Tier 2 Ghidra evidence
 
-Export the Ghidra program if available, then run the scout with the challenge control-flow evidence:
+For Tier 2, do not use the generic top-100 scout: large functions can be penalized by its ranking and omitted.
 
-    <ghidra> ... -postScript scout_functions.py
+Run the targeted Ghidra scout against the authoritative report:
 
-Save the output as:
+    <ghidra> ... -postScript tier2_ghidra_scout.py .decomp-agent/challenge/report.json > .decomp-agent/challenge/tier2-scout.json
 
-    .decomp-agent/challenge/scout.json
+It computes the same P75 size gate and analyzes only functions that already satisfy:
 
-The scout is evidence only. It does not decide whether a function is matched.
+    match == 0
+    size >= max(256, P75)
 
-## 4. Run the selector
+The output contains CFG, branch/loop/switch evidence, calls, globals, stores, and signatures.
+
+The scout is evidence only. objdiff remains authoritative.
+
+## 4. Run the Tier 2 autopilot
 
 Run:
 
-    <python> <skills>/decomp/scripts/challenge_selector.py \
+    <python> <skills>/decomp/scripts/challenge_autopilot.py \
       .decomp-agent/challenge/report.json \
-      --scout .decomp-agent/challenge/scout.json \
-      --top 20 \
-      -o .decomp-agent/challenge/selection.json
+      --scout .decomp-agent/challenge/tier2-scout.json \
+      --project . \
+      --objdiff-json objdiff.json \
+      --top 10 \
+      --write-packs \
+      --objdiff-cli .\\objdiff-cli.exe \
+      -o .decomp-agent/challenge/tier2-selection.json
 
-The selector produces:
-- Tier 1 candidates;
-- Tier 2 candidates that satisfy the size and control-flow gates;
-- Tier 3 candidates ranked by objective complexity signals;
-- the exact P75 used for Tier 2;
-- the number of remaining undecompiled functions.
+The autopilot applies all mechanical gates:
+- exact zero-match status;
+- at least 256 bytes;
+- at least the P75 of remaining undecompiled functions;
+- confirmed branch/loop/switch control flow;
+- rejects accessor-like, thunk, stub/table/initializer candidates;
+- requires additional call/global evidence for branch-only wrappers.
 
-The target report is authoritative for match status.
+It writes one candidate pack per eligible function containing:
+- candidate JSON;
+- current objdiff diff;
+- a concise Codex prompt.
+
+The final "real game logic" classification remains a manual check. The script deliberately reports it as heuristic evidence rather than pretending semantics can be proven automatically.
 
 ## 5. Tier 1
 
