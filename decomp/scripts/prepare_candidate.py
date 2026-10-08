@@ -7,7 +7,6 @@ import argparse
 import json
 import re
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -61,16 +60,6 @@ def copy_direct_includes(source: Path, project: Path, destination: Path) -> list
     return copied
 
 
-def run_objdiff(cli: Path, project: Path, symbol: str) -> tuple[int, str]:
-    process = subprocess.run(
-        [str(cli), "diff", "-p", str(project), symbol],
-        cwd=project,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-    )
-    return process.returncode, process.stdout
 
 
 def make_prompt(
@@ -164,7 +153,7 @@ def main() -> int:
     parser.add_argument("selection_json", type=Path)
     parser.add_argument("candidate", help="Exact candidate symbol/name.")
     parser.add_argument("--project", type=Path, default=Path("."))
-    parser.add_argument("--objdiff-cli", type=Path)
+    parser.add_argument("--compare-json", type=Path, help="Existing non-interactive compare_target.py result for this candidate.")
     parser.add_argument("--scout-json", type=Path)
     parser.add_argument("--analysis-json", type=Path)
     parser.add_argument("--reference-json", type=Path)
@@ -334,12 +323,9 @@ def main() -> int:
                 manifest["files"]["memory"] = "evidence/memory.json"
                 manifest["files"]["function"] = "evidence/function.json"
 
-    if args.objdiff_cli:
-        code, diff = run_objdiff(args.objdiff_cli.resolve(), project, args.candidate)
-        (output / "objdiff.txt").write_text(diff, encoding="utf-8")
-        manifest["files"]["objdiff"] = "objdiff.txt"
-        manifest["objdiff_exit"] = code
-
+    if args.compare_json and args.compare_json.is_file():
+        shutil.copy2(args.compare_json, evidence_dir / "compare.json")
+        manifest["files"]["compare"] = "evidence/compare.json"
     (output / "prior-knowledge.json").write_text(
         json.dumps(compact(prior_knowledge), indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
