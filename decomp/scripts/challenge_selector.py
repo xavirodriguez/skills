@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
-"""Backward-compatible wrapper for the unified challenge module.
-
-New code should use challenge.py directly.
-"""
+"""Backward-compatible CLI wrapper for the unified challenge engine."""
 
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
 from challenge import evaluate, load_json
@@ -22,43 +18,13 @@ def select(
     top: int = 20,
 ):
     result = evaluate(report, scout, min_tier2_size=min_tier2_size)
-    rows = result["tier2"]["candidates"]
-    tier1 = []
-    # Preserve the old public shape for existing users/tests.
-    for item in result["tier2"]["near_miss"]:
-        if (item.get("size") or 0) >= min_tier1_size and not item["logic_screen"]["name_reason"]:
-            tier1.append(item)
-    tier1.extend(
-        item for item in rows if (item.get("size") or 0) >= min_tier1_size
-    )
-    tier1.sort(key=lambda item: (item.get("size") or 0, item["name"]))
-
-    matched = sum(1 for row in result["tier2"]["candidates"] if row["match_percent"] >= 100.0)
-    partial = sum(1 for row in result["tier2"]["near_miss"] if 0.0 < row["match_percent"] < 100.0)
-
-    return {
-        "format": "decomp-challenge-selection-v1-compat",
-        "summary": {
-            "total_functions": result["summary"]["total_functions"],
-            "matched_functions": matched,
-            "partial_functions": partial,
-            "remaining_functions": result["summary"]["remaining_functions"],
-            "undecompiled_functions": result["summary"]["undecompiled_functions"],
-            "unknown_size_functions": 0,
-            "remaining_undecompiled_p75_bytes": result["summary"]["p75_bytes"],
-            "tier2_size_threshold_bytes": result["summary"]["tier2_threshold_bytes"],
-        },
-        "tier1": {"candidates": tier1[:top]},
-        "tier2": {
-            "candidates": rows[:top],
-            "requirement": "compatibility view; use challenge.py for authoritative challenge selection",
-        },
-        "tier3": {"candidates": []},
-        "policy": {
-            "deprecated": True,
-            "use_unified_challenge_module": True,
-        },
-    }
+    result["tier1"]["candidates"] = [
+        item for item in result["tier1"]["candidates"]
+        if (item.get("size") or 0) >= min_tier1_size
+    ][:top]
+    result["tier2"]["candidates"] = result["tier2"]["candidates"][:top]
+    result["tier3"]["candidates"] = result["tier3"]["candidates"][:top]
+    return result
 
 
 def main() -> int:
@@ -71,16 +37,19 @@ def main() -> int:
     parser.add_argument("-o", "--output", type=Path)
     args = parser.parse_args()
 
-    scout = load_json(args.scout) if args.scout else None
+    if args.top < 1:
+        parser.error("--top must be >= 1")
+
     result = select(
         load_json(args.report_json),
-        scout,
+        load_json(args.scout) if args.scout else None,
         min_tier1_size=args.tier1_min_size,
         min_tier2_size=args.tier2_min_size,
         top=args.top,
     )
-    rendered = json.dumps(result, indent=2, sort_keys=True)
+    rendered = __import__("json").dumps(result, indent=2, sort_keys=True)
     if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered + "\n", encoding="utf-8")
     else:
         print(rendered)
