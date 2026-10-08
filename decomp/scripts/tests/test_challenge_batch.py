@@ -73,6 +73,31 @@ class ChallengeBatchTests(unittest.TestCase):
             loaded = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(loaded["format"], "decomp-challenge-session-v2")
 
+    def test_record_rejects_non_current_target(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.json"
+            session = init_session(
+                path,
+                evaluation_for("A", "B"),
+                tier="tier2",
+                quota=0,
+                max_stagnation=3,
+                replace=True,
+            )
+            session["queue"][0]["status"] = "active"
+            session["current_target"] = session["queue"][0]["key"]
+            with self.assertRaises(ValueError):
+                record_result(
+                    session,
+                    target="B",
+                    match_before=0.0,
+                    match_after=1.0,
+                    exact=False,
+                    mismatch="wrong target",
+                    lesson="Must not advance manually.",
+                    infrastructure_blocker=False,
+                )
+
     def test_no_progress_blocks_after_stagnation_threshold(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "session.json"
