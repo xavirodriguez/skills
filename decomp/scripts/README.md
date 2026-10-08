@@ -159,3 +159,12 @@ The project-level ledger lives at `.decomp-agent/hypotheses.jsonl`. Search relat
     python3 hypothesis_knowledge.py .decomp-agent/hypotheses.jsonl --target <function> --query "<symptom or hypothesis>"
 
 The search ranks prior entries by textual overlap, mismatch families and successful match improvements. It is deliberately compact so previous work can be reused without loading the entire ledger into context.
+
+
+## OpenCode bundling
+
+Use `package_opencode.py` to produce a self-contained OpenCode source:
+
+    python3 package_opencode.py --output /path/to/opencode-decomp-skills --force
+
+It copies only directories containing `SKILL.md`, places shared helpers under `_runtime/`, and rewrites `../../scripts/` references to `../_runtime/`. The canonical source remains `decomp/skills/` + `decomp/scripts/`.
