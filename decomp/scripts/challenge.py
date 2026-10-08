@@ -175,11 +175,8 @@ def logic_evidence(scout: dict[str, Any]) -> tuple[bool, list[str]]:
     semantic = bool(
         scout.get("has_loop")
         or scout.get("has_switch")
-        or (
-            scout.get("conditional_branches", 0)
-            and (scout.get("callees", 0) or scout.get("globals", 0) or scout.get("stores", 0))
-        )
-        or (scout.get("blocks", 0) >= 3 and (scout.get("callees", 0) or scout.get("globals", 0) or scout.get("stores", 0)))
+        or scout.get("conditional_branches", 0)
+        or scout.get("blocks", 0) >= 3
     )
     return bool(control_flow and semantic), reasons
 
