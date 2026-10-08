@@ -151,6 +151,8 @@ class ChallengeBatchTests(unittest.TestCase):
 
             self.assertEqual(candidate["status"], "active")
             self.assertEqual(candidate["stagnation"], 0)
+            self.assertEqual(candidate["attempts"], 0)
+            self.assertEqual(candidate["tool_failures"], 5)
             self.assertFalse(session["halted"])
             self.assertEqual(
                 session["history"][-1]["status"],
