@@ -14,6 +14,7 @@ from challenge_batch import (
     load_session,
     record_integration,
     record_result,
+    skip_target,
 )
 
 
@@ -86,8 +87,34 @@ class ChallengeBatchTests(unittest.TestCase):
             )
             session["queue"][0]["status"] = "active"
             session["current_target"] = session["queue"][0]["key"]
-            candidate = session["queue"][0]
-            self.assertEqual(candidate["status"], "active")
+            with self.assertRaises(ValueError):
+                skip_target(
+                    session,
+                    target="A",
+                    reason="seems difficult",
+                    force=False,
+                )
+            self.assertEqual(session["queue"][0]["status"], "active")
+
+    def test_force_skip_releases_current_target_explicitly(self) -> None:
+        session = init_session(
+            Path(tempfile.gettempdir()) / "unused-session.json",
+            evaluation_for("A"),
+            tier="tier2",
+            quota=0,
+            max_stagnation=3,
+            replace=True,
+        )
+        session["queue"][0]["status"] = "active"
+        session["current_target"] = session["queue"][0]["key"]
+        candidate = skip_target(
+            session,
+            target="A",
+            reason="explicit user-requested skip",
+            force=True,
+        )
+        self.assertEqual(candidate["status"], "blocked")
+        self.assertIsNone(session["current_target"])
     def test_record_rejects_non_current_target(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "session.json"
