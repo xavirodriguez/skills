@@ -168,3 +168,43 @@ Use `package_opencode.py` to produce a self-contained OpenCode source:
     python3 package_opencode.py --output /path/to/opencode-decomp-skills --force
 
 It copies only directories containing `SKILL.md`, places shared helpers under `_runtime/`, and rewrites `../../scripts/` references to `../_runtime/`. The canonical source remains `decomp/skills/` + `decomp/scripts/`.
+
+
+## Autonomous challenge batch matching
+
+challenge_batch.py is the persistent controller for multi-target autonomous matching. It keeps queue/state in:
+
+    .decomp-agent/challenge/session.json
+
+Typical Tier 2 bootstrap:
+
+    python decomp/scripts/challenge_batch.py init --project . --report .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --reference .decomp-agent/reference/ph-analysis.json --tier tier2 --quota 0 --max-stagnation 3 --policy .decomp-agent/session-policy.json --require-policy
+
+Then:
+
+    python decomp/scripts/challenge_batch.py next --session .decomp-agent/challenge/session.json --claim
+
+After one authoritative match experiment:
+
+    python decomp/scripts/challenge_batch.py record --session .decomp-agent/challenge/session.json --target <function> --before <before> --after <after>
+
+For an exact match, record --exact requires an authoritative report refresh command and refreshes/rescores the queue automatically. This makes report refresh part of the success transition rather than an optional memory step.
+
+max-stagnation is a no-progress threshold, not an arbitrary total-iteration limit. Positive match deltas reset it. A candidate that reaches the threshold is marked blocked and will not be selected again.
+
+The controller never edits source code. The LLM remains responsible for the source hypothesis; the controller owns candidate state, ranking, refresh and transitions.
+
+## Ghidra launcher detection
+
+Use:
+
+    python decomp/scripts/ghidra_launcher.py detect --ghidra-home <Ghidra>
+
+to locate pyghidraRun and analyzeHeadless. Use:
+
+    python decomp/scripts/ghidra_launcher.py script-runtime --script <collector.py>
+
+to decide which launcher the collector expects. Ghidra documents pyghidraRun.bat as the Windows PyGhidra launch path and -H as headless mode.
+
+The current repository collectors use Ghidra's native headless scripting API, so they should continue to run under analyzeHeadless unless explicitly migrated to PyGhidra.
+
