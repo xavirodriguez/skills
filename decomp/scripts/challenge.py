@@ -150,6 +150,8 @@ def obvious_non_logic(name: str) -> tuple[bool, str | None]:
 
 
 def match_kind(row: dict[str, Any], source_info: dict[str, Any] | None) -> str:
+    if not row.get("match_available"):
+        return "unknown_match_data"
     if row["match_percent"] >= 100.0:
         return "matched"
     if row["match_percent"] > 0.0:
@@ -391,8 +393,14 @@ def evaluate(
         "summary": {
             "total_functions": len(rows),
             "unavailable_match_data_functions": len(unavailable),
-            "matched_functions": sum(1 for row in rows if row["match_percent"] >= 100.0),
-            "partial_functions": sum(1 for row in rows if 0.0 < row["match_percent"] < 100.0),
+            "matched_functions": sum(
+                1 for row in rows
+                if row.get("match_available") and row["match_percent"] >= 100.0
+            ),
+            "partial_functions": sum(
+                1 for row in rows
+                if row.get("match_available") and 0.0 < row["match_percent"] < 100.0
+            ),
             "remaining_functions": len(remaining),
             "undecompiled_functions": len(undecompiled),
             "p75_bytes": p75,
