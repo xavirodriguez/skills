@@ -1,6 +1,6 @@
 ---
 name: ph-decomp
-description: Orchestrate Phantom Hourglass matching decompilation on Windows or POSIX. Mandatory preflight, reference-project gate, XMAP correlation, Ghidra evidence and authoritative objdiff verification.
+description: Orchestrate Phantom Hourglass matching decompilation on Windows or POSIX with task-aware routing, targeted analysis and authoritative verification.
 ---
 
 # Phantom Hourglass Decompilation
