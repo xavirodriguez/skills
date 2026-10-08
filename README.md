@@ -62,6 +62,17 @@ Uso:
 El selector no decide por sí solo si una función contiene lógica de juego real: esa comprobación requiere inspección manual.
 
 
+
+### OpenCode packaging
+
+For a self-contained OpenCode installation, generate the native skill bundle:
+
+```powershell
+python decomp/scripts/package_opencode.py --output D:\\xavi\\opencode-decomp-skills --force
+```
+
+Then point OpenCode's `skills` array at that generated directory. The repository remains the single source of truth; the generated bundle contains the shared runtime helpers inside the OpenCode skill source.
+
 ## matching-decomp
 
 Skill para **matching decompilation** de juegos y software legacy: Ghidra/PyGhidra + evidencia estructurada + hipótesis de código fuente + build/compare reproducible.
