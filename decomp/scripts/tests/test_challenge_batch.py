@@ -10,10 +10,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from challenge_batch import (
     choose_next,
+    finalize_integrated_target,
     init_session,
     load_session,
     record_integration,
     record_result,
+    skip_target,
 )
 
 
@@ -72,6 +74,72 @@ class ChallengeBatchTests(unittest.TestCase):
             self.assertEqual(candidate["name"], "A")
             loaded = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(loaded["format"], "decomp-challenge-session-v2")
+
+    def test_active_target_cannot_be_skipped_without_force(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.json"
+            session = init_session(
+                path,
+                evaluation_for("A", "B"),
+                tier="tier2",
+                quota=0,
+                max_stagnation=3,
+                replace=True,
+            )
+            session["queue"][0]["status"] = "active"
+            session["current_target"] = session["queue"][0]["key"]
+            with self.assertRaises(ValueError):
+                skip_target(
+                    session,
+                    target="A",
+                    reason="seems difficult",
+                    force=False,
+                )
+            self.assertEqual(session["queue"][0]["status"], "active")
+
+    def test_force_skip_releases_current_target_explicitly(self) -> None:
+        session = init_session(
+            Path(tempfile.gettempdir()) / "unused-session.json",
+            evaluation_for("A"),
+            tier="tier2",
+            quota=0,
+            max_stagnation=3,
+            replace=True,
+        )
+        session["queue"][0]["status"] = "active"
+        session["current_target"] = session["queue"][0]["key"]
+        candidate = skip_target(
+            session,
+            target="A",
+            reason="explicit user-requested skip",
+            force=True,
+        )
+        self.assertEqual(candidate["status"], "blocked")
+        self.assertIsNone(session["current_target"])
+    def test_record_rejects_non_current_target(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.json"
+            session = init_session(
+                path,
+                evaluation_for("A", "B"),
+                tier="tier2",
+                quota=0,
+                max_stagnation=3,
+                replace=True,
+            )
+            session["queue"][0]["status"] = "active"
+            session["current_target"] = session["queue"][0]["key"]
+            with self.assertRaises(ValueError):
+                record_result(
+                    session,
+                    target="B",
+                    match_before=0.0,
+                    match_after=1.0,
+                    exact=False,
+                    mismatch="wrong target",
+                    lesson="Must not advance manually.",
+                    infrastructure_blocker=False,
+                )
 
     def test_no_progress_blocks_after_stagnation_threshold(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -229,7 +297,13 @@ class ChallengeBatchTests(unittest.TestCase):
                 evidence=integration,
                 lesson="Object range verified.",
             )
-            self.assertEqual(result["status"], "matched")
+            self.assertEqual(result["status"], "integration-passed")
+            self.assertEqual(session["current_target"], candidate["key"])
+            self.assertEqual(session["phase"], "refresh-required")
+            self.assertEqual(session["matches_completed"], 0)
+
+            finalized = finalize_integrated_target(session, target="A")
+            self.assertEqual(finalized["status"], "matched")
             self.assertIsNone(session["current_target"])
             self.assertEqual(session["matches_completed"], 1)
             self.assertTrue(session["halted"])

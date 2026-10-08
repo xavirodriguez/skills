@@ -30,6 +30,15 @@ TOOL_TRANSPORT_MARKERS = (
     "the last line of the patch must be",
 )
 
+INTERACTIVE_OBJDIF_RE = re.compile(
+    r"(?<![\w-])objdiff(?:-cli)?(?:\.exe)?\s+diff(?:\s|$)",
+    re.IGNORECASE,
+)
+
+
+def contains_interactive_objdiff(command: str) -> bool:
+    return bool(INTERACTIVE_OBJDIF_RE.search(command))
+
 
 def contains_nested_agent_invocation(command: str) -> bool:
     return bool(NESTED_AGENT_RE.search(command))
@@ -79,6 +88,13 @@ def run(
         return TOOL_TRANSPORT_EXIT, (
             f"$ [{shell}] {command}\n\n"
             "[tool-transport-failure] nested agent invocation is forbidden\n"
+        ), 0.0, False, True
+
+    if contains_interactive_objdiff(command):
+        return TOOL_TRANSPORT_EXIT, (
+            f"$ [{shell}] {command}\n\n"
+            "[tool-transport-failure] interactive objdiff diff is forbidden; "
+            "use compare_target.py via run_match.py\n"
         ), 0.0, False, True
 
     try:

@@ -37,7 +37,49 @@ def classify_mismatch(raw: str) -> list[str]:
     return tags or ["unknown"]
 
 
+def parse_structured_compare(raw: str) -> dict | None:
+    candidates = [raw.strip()]
+    lines = raw.splitlines()
+    candidates.extend(
+        line.strip()
+        for line in lines
+        if line.strip().startswith("{") and line.strip().endswith("}")
+    )
+    for candidate in reversed(candidates):
+        try:
+            value = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(value, dict):
+            continue
+        if "match_percent" not in value and "exact_match" not in value:
+            continue
+        match_percent = value.get("match_percent")
+        if isinstance(match_percent, (int, float)) and not isinstance(match_percent, bool):
+            match = float(match_percent)
+        else:
+            match = None
+        return {
+            "status": value.get("status"),
+            "target": value.get("target"),
+            "name": value.get("name"),
+            "address": value.get("address", value.get("function_entry")),
+            "size": value.get("size", value.get("function_size")),
+            "unit": value.get("unit", value.get("translation_unit")),
+            "match_percent": match,
+            "exact_match": value.get("exact_match") is True or (match is not None and match >= 100.0),
+            "compare_data_available": match is not None or value.get("exact_match") is True,
+            "first_mismatch": value.get("first_mismatch"),
+            "mismatch_tags": classify_mismatch(json.dumps(value, sort_keys=True)),
+            "evidence_lines": [json.dumps(value, sort_keys=True)],
+        }
+    return None
+
 def parse_compare(raw: str) -> dict:
+    structured = parse_structured_compare(raw)
+    if structured is not None:
+        return structured
+
     percentages = []
     for pattern in PERCENT_PATTERNS:
         percentages.extend(float(m.group(1)) for m in pattern.finditer(raw))

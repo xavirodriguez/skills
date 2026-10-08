@@ -58,8 +58,17 @@ For an exact match, use `--exact` together with the authoritative report refresh
 
     <python> ../../scripts/challenge_batch.py record --session .decomp-agent/challenge/session.json --target <candidate> --before <match-before> --after 100 --exact --refresh-command "<authoritative report/build command>" --report .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --reference .decomp-agent/reference/ph-analysis.json --project . --policy .decomp-agent/session-policy.json --require-policy
 
+After the exact-match transition, collect object/link integration evidence and record it:
+
+    <python> ../../scripts/challenge_batch.py integration-record --session .decomp-agent/challenge/session.json --target <candidate> --status pass --evidence .decomp-agent/integration/<candidate>.json --policy .decomp-agent/session-policy.json --require-policy
+
+Then run the authoritative refresh before asking for the next target:
+
+    <python> ../../scripts/challenge_batch.py refresh --session .decomp-agent/challenge/session.json --project . --refresh-command "<authoritative report/build command>" --report .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --reference .decomp-agent/reference/ph-analysis.json --policy .decomp-agent/session-policy.json --require-policy
 Rules:
-- An exact match clears the active target, increments `matches_completed`, and triggers the mandatory authoritative refresh.
+- An exact function match enters `integration-pending`; it does not clear the active target and does not increment `matches_completed`.
+- Integration `pass` enters `refresh-required`; it still does not clear the active target.
+- The authoritative report refresh is mandatory. Only after refresh may the controller finalize the target as `matched`, clear `current_target`, increment `matches_completed` and select the next candidate.
 - A positive match delta resets stagnation.
 - A non-improving experiment increments stagnation.
 - When stagnation reaches the configured threshold, the candidate is automatically marked `blocked` and the controller can move to the next candidate.
@@ -113,6 +122,37 @@ For every candidate experiment, use this execution contract:
 
 The agent must not use a direct `objdiff-cli diff` invocation in the autonomous loop.
 
+### Deterministic Tier 2 execution
+
+After claiming a candidate, do not manually re-rank or switch targets. The controller owns target selection.
+
+For each iteration:
+
+    inspect evidence
+      -> write ONE hypothesis
+      -> source_edit.py
+      -> git diff verification
+      -> run_match.py
+      -> parse structured compare result
+      -> challenge_batch.py record
+      -> continue same target
+
+Decision rules:
+
+- compare_target.py valid JSON + exact: record exact, enter integration verification.
+- valid JSON + partial/zero: record result and diagnose the first mismatch family.
+- build/compare timeout or transport failure: record --tool-transport-failure; do not consume stagnation.
+- compiler/linker failure caused by the current source edit: record experiment evidence and continue with a new hypothesis.
+- missing helper/project path: one existence check, then stop on absence.
+- candidate analysis is incomplete: gather bounded evidence for the same candidate; never rotate because it is inconvenient.
+- optional context-pack/reporting failure: do not reinterpret the target; continue only when required evidence remains available.
+- never use skip as a convenience mechanism for selecting an easier candidate.
+
+The next candidate may only come from:
+
+    challenge_batch.py next --session ... --claim
+
+and only after the current target has reached the terminal matched state.
 ## Candidate ranking
 
 The selector exposes `expected_value_score` in addition to `success_score`, `game_logic_score` and `complexity_score`.
