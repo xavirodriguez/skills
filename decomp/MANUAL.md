@@ -37,19 +37,15 @@ After inspection, build:
 
 Run `candidate_gate.py` before choosing a function. Do not interpret an incomplete objdiff unit as proof that all functions in its translation unit need decompilation.
 
-For Phantom Hourglass challenge Tier 2, use the targeted Ghidra scout plus the autopilot:
+For Phantom Hourglass challenge Tier 2, use the targeted Ghidra scout plus the persistent batch controller:
 
     <ghidra> ... -postScript tier2_ghidra_scout.py .decomp-agent/challenge/report.json > .decomp-agent/challenge/tier2-scout.json
 
-    <python> <skills>/decomp/scripts/challenge_autopilot.py \
-      .decomp-agent/challenge/report.json \
-      --scout .decomp-agent/challenge/tier2-scout.json \
-      --project . \
-      --objdiff-json objdiff.json \
-      --objdiff-cli .\\objdiff-cli.exe \
-      --write-packs
+    <python> <skills>/decomp/scripts/challenge_batch.py init --project . --report .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --reference .decomp-agent/reference/ph-analysis.json --tier tier2 --quota 0 --max-stagnation 3 --policy .decomp-agent/session-policy.json --require-policy
 
-This enforces the objective Tier 2 gates from the current report and produces a candidate pack with objdiff evidence and a Codex-ready prompt. It does not pretend that heuristics prove semantic "game logic"; that final classification remains a review step.
+    <python> <skills>/decomp/scripts/challenge_batch.py next --session .decomp-agent/challenge/session.json --claim
+
+This keeps a persistent candidate queue, selects by expected value, preserves active partial matches, skips stagnant candidates and refreshes/re-ranks after exact matches. The legacy challenge_autopilot.py remains a selector/pack wrapper; it is not the multi-target controller.
 
 The workflow is split into safe, reproducible stages. The first decision is task routing: EXPLAIN/INSPECT/ANALYZE/TARGET_MATCH use the smallest necessary path; SELECT/CHALLENGE use the full gates.
 
