@@ -807,6 +807,13 @@ def main() -> int:
     session = load_session(args.session)
 
     if args.command == "next":
+        if session.get("phase") == "refresh-required":
+            print(json.dumps({
+                "status": "refresh-required",
+                "current_target": session.get("current_target"),
+                "message": "Run authoritative refresh before selecting the next target.",
+            }, indent=2, sort_keys=True))
+            return 2
         candidate = claim_next(session) if args.claim else choose_next(session)
         save_session(args.session, session)
         print(json.dumps(candidate or {"status": "no-candidate"}, indent=2, sort_keys=True))
