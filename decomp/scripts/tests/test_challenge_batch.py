@@ -57,7 +57,7 @@ class ChallengeBatchTests(unittest.TestCase):
             candidate = choose_next(session)
             self.assertEqual(candidate["name"], "A")
             loaded = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(loaded["format"], "decomp-challenge-session-v1")
+            self.assertEqual(loaded["format"], "decomp-challenge-session-v2")
 
     def test_no_progress_blocks_after_stagnation_threshold(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -220,7 +220,7 @@ class ChallengeBatchTests(unittest.TestCase):
             self.assertTrue(session["halted"])
             self.assertEqual(session["stop_reason"], "quota-reached")
 
-    def test_exact_match_clears_current_target(self) -> None:
+    def test_exact_match_keeps_target_for_integration(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "session.json"
             session = init_session(
@@ -244,9 +244,11 @@ class ChallengeBatchTests(unittest.TestCase):
                 lesson="Exact authoritative match.",
                 infrastructure_blocker=False,
             )
-            self.assertEqual(candidate["status"], "matched")
-            self.assertEqual(session["matches_completed"], 1)
-            self.assertIsNone(session["current_target"])
+            self.assertEqual(candidate["status"], "integration-pending")
+            self.assertEqual(session["matches_completed"], 0)
+            self.assertEqual(session["function_matches_completed"], 1)
+            self.assertEqual(session["phase"], "integration")
+            self.assertEqual(session["current_target"], candidate["key"])
 
 
 if __name__ == "__main__":
