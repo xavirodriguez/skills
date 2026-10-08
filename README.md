@@ -21,6 +21,26 @@ codex plugin marketplace add xavirodriguez/skills --ref <branch>
 
 Después de instalar o actualizar un plugin, inicia un hilo nuevo de Codex para cargar la versión actualizada.
 
+## OpenCode
+
+La integración de OpenCode usa **skills nativas**, no un plugin de OpenCode.
+
+Consulta [decomp/OPENCODE.md](decomp/OPENCODE.md) para la instalación. La configuración mínima es añadir el directorio `decomp` como fuente de skills:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": [
+    "D:/path/to/skills/decomp"
+  ]
+}
+```
+
+OpenCode descubre los `SKILL.md` anidados dentro de esa fuente y las rutas de los helpers son relativas a cada skill. Los IDs principales son `ph-decomp`, `ph-challenge` y `matching-decomp`.
+
+En OpenCode V2 se pueden activar explícitamente desde el catálogo como `/ph-decomp`, `/ph-challenge` y `/matching-decomp`.
+
+
 ## ph-challenge
 
 Workflow específico para el challenge de decompilación de Phantom Hourglass.
