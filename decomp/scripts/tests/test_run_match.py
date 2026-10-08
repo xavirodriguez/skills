@@ -47,6 +47,7 @@ class RunMatchShellTests(unittest.TestCase):
             (root / "source.cpp").write_text("int x = 2;\n", encoding="utf-8")
             (root / ".decomp-agent").mkdir()
             (root / ".decomp-agent" / "internal.json").write_text("{}", encoding="utf-8")
+            subprocess.run(["git", "add", "source.cpp"], cwd=root, check=True, capture_output=True)
 
             state = capture_git_state(root)
             self.assertTrue(state["dirty"])
