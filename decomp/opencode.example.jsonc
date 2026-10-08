@@ -21,6 +21,7 @@
     { "action": "shell", "resource": "git push *", "effect": "deny" },
     { "action": "shell", "resource": "git reset --hard *", "effect": "deny" },
     { "action": "shell", "resource": "*", "effect": "ask" },
-    { "action": "edit", "resource": "*", "effect": "ask" }
+    { "action": "edit", "resource": "*", "effect": "ask" },
+    { "action": "edit", "resource": ".decomp-agent/session-policy.json", "effect": "deny" }
   ]
 }
