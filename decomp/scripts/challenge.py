@@ -381,6 +381,29 @@ def run_objdiff(objdiff_cli: Path, project: Path, symbol: str) -> tuple[int, str
     return result.returncode, result.stdout
 
 
+
+def compact_summary(result: dict[str, Any]) -> dict[str, Any]:
+    summary = result["summary"]
+    candidates = result.get("tier2", {}).get("candidates", [])
+    return {
+        "format": result["format"],
+        "status": "written",
+        "remaining_functions": summary["remaining_functions"],
+        "undecompiled_functions": summary["undecompiled_functions"],
+        "p75_bytes": summary["p75_bytes"],
+        "tier2_threshold_bytes": summary["tier2_threshold_bytes"],
+        "eligible_candidates": summary["eligible_candidates"],
+        "top_tier2": [
+            {
+                "name": item.get("name"),
+                "size": item.get("size"),
+                "success_score": item.get("success_score"),
+                "game_logic_score": item.get("game_logic_score"),
+            }
+            for item in candidates[:5]
+        ],
+    }
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report_json", type=Path)
@@ -390,6 +413,11 @@ def main() -> int:
     parser.add_argument("--top", type=int, default=10)
     parser.add_argument("--min-size", type=int, default=256)
     parser.add_argument("-o", "--output", type=Path)
+    parser.add_argument(
+        "--full-output",
+        action="store_true",
+        help="Print the full JSON even when --output is used.",
+    )
     args = parser.parse_args()
 
     if args.top < 1 or args.min_size < 0:
