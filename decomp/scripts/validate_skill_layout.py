@@ -65,7 +65,9 @@ def validate_skill(path: Path, skills_root: Path) -> list[str]:
     ):
         helper = (path.parent / relative).resolve()
         if not helper.is_file():
-            errors.append(f"{path}: helper path does not exist: {relative}")
+            errors.append(
+                f"{path}: helper path does not exist: {relative} -> {helper}"
+            )
 
     if path.parent.parent != skills_root:
         errors.append(f"{path}: unexpected skill nesting")
