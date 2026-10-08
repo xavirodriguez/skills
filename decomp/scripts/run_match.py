@@ -269,7 +269,6 @@ def main() -> int:
     root = Path(args.project).resolve()
     state = root / ".decomp-agent"
     target_state = state / "targets" / args.target.replace("/", "_")
-    target_state.mkdir(parents=True, exist_ok=True)
 
     try:
         policy = load_policy(args.policy)
@@ -312,8 +311,6 @@ def main() -> int:
         "policy": policy,
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    write_json(state / "run.json", config)
-
     if args.dry_run:
         print(json.dumps({"status": "dry-run", **config}, indent=2, sort_keys=True))
         return 0
