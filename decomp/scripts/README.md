@@ -235,6 +235,14 @@ It reports `match_percent`, `exact_match`, size, address and unit as JSON. It do
 
 Autonomous build/compare experiments must run through `run_match.py`. The harness rejects nested `codex`/ `opencode` invocations and classifies known edit/TTY transport failures as `tool-transport-failure`. This state is telemetry only; it is not candidate stagnation.
 
+## Integration evidence helper
+
+Validate an evidence document before recording an object/link integration result:
+
+    python integration_check.py .decomp-agent/integration/<target>.json
+
+The validator requires explicit `function`, `object`, `range`, and `evidence` data for each region and computes the function end from its entry/size. It rejects function ranges that fall outside the declared object/integration range and rejects multi-region evidence that is marked as merely mirrored.
+
 ## Function integration state
 
 The autonomous challenge controller treats an exact function match as `integration-pending` until object/link integration is verified.
