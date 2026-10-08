@@ -33,9 +33,9 @@ For autonomous challenge work, materialize the permission budget first:
 
     <python> ../../scripts/session_policy.py init --mode challenge --force
 
-All selectors then receive:
+All autonomous selectors then receive:
 
-    --policy .decomp-agent/session-policy.json
+    --policy .decomp-agent/session-policy.json --require-policy
 
 
 Run the PH preflight first. Then follow the project's own README/INSTALL and verify a clean build.
