@@ -602,6 +602,7 @@ def main() -> int:
             reference_path=args.reference,
             project=args.project,
             shell=args.shell,
+            timeout=args.refresh_timeout,
         )
         print(json.dumps(compact(refreshed), indent=2, sort_keys=True))
         return code
