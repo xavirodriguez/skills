@@ -66,6 +66,19 @@ class RunMatchTelemetryTests(unittest.TestCase):
         self.assertIn("+8.50", lesson)
         self.assertIn("stack_layout", lesson)
 
+    def test_interactive_objdiff_is_rejected(self) -> None:
+        code, log, elapsed, timed_out, transport = run(
+            "objdiff-cli.exe diff -p . target",
+            Path(".").resolve(),
+            "powershell",
+            10.0,
+        )
+        self.assertEqual(code, 5)
+        self.assertTrue(transport)
+        self.assertIn("interactive objdiff diff is forbidden", log)
+        self.assertFalse(timed_out)
+        self.assertEqual(elapsed, 0.0)
+
     def test_nested_agent_invocation_is_rejected(self) -> None:
         self.assertTrue(contains_nested_agent_invocation("codex.exe --help"))
         self.assertTrue(contains_nested_agent_invocation(r".\\opencode.exe run"))
