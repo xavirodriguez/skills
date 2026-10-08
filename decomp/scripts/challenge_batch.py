@@ -421,6 +421,18 @@ def main() -> int:
     record.add_argument("--mismatch", default="")
     record.add_argument("--lesson", default="")
     record.add_argument("--infrastructure-blocker", action="store_true")
+    record.add_argument("--project", type=Path, default=Path("."))
+    record.add_argument("--refresh-command", default="")
+    record.add_argument("--report", type=Path)
+    record.add_argument("--scout", type=Path)
+    record.add_argument("--reference", type=Path)
+    record.add_argument("--shell", choices=("powershell", "pwsh", "bash", "cmd"), default="powershell")
+    record.add_argument(
+        "--policy",
+        type=Path,
+        default=Path(".decomp-agent/session-policy.json"),
+    )
+    record.add_argument("--require-policy", action="store_true")
 
     refresh = sub.add_parser("refresh")
     refresh.add_argument("--session", type=Path, default=Path(".decomp-agent/challenge/session.json"))
@@ -491,6 +503,18 @@ def main() -> int:
         return 0 if candidate else 1
 
     if args.command == "record":
+        if args.exact:
+            if not args.refresh_command or not args.report:
+                parser.error("--exact requires --refresh-command and --report")
+            try:
+                require_allowed(
+                    args.policy,
+                    "build",
+                    require_file=args.require_policy,
+                )
+            except (OSError, ValueError, PermissionError) as exc:
+                parser.error(str(exc))
+
         candidate = record_result(
             session,
             target=args.target,
@@ -502,6 +526,24 @@ def main() -> int:
             infrastructure_blocker=args.infrastructure_blocker,
         )
         save_session(args.session, session)
+
+        if args.exact:
+            code, refreshed = refresh_report(
+                args.session,
+                refresh_command=args.refresh_command,
+                report_path=args.report,
+                scout_path=args.scout,
+                reference_path=args.reference,
+                project=args.project,
+                shell=args.shell,
+            )
+            print(json.dumps({
+                "candidate": candidate,
+                "refresh_exit": code,
+                "session": compact(refreshed),
+            }, indent=2, sort_keys=True))
+            return code
+
         print(json.dumps(candidate, indent=2, sort_keys=True))
         return 0
 
