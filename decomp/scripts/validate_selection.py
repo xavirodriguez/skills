@@ -25,7 +25,14 @@ def load(path: Path) -> dict[str, Any]:
     return value
 
 
-def validate(selection: dict[str, Any], *, report: Path, scout: Path | None, reference: Path | None) -> dict[str, Any]:
+def validate(
+    selection: dict[str, Any],
+    *,
+    report: Path,
+    scout: Path | None,
+    reference: Path | None,
+    previous_report: Path | None = None,
+) -> dict[str, Any]:
     provenance = selection.get("provenance")
     if not isinstance(provenance, dict) or provenance.get("format") != "decomp-selection-provenance-v1":
         raise ValueError("selection artifact has no supported provenance; regenerate it")
@@ -34,6 +41,8 @@ def validate(selection: dict[str, Any], *, report: Path, scout: Path | None, ref
         expected["scout"] = scout
     if reference is not None:
         expected["reference"] = reference
+    if previous_report is not None:
+        expected["previous_report"] = previous_report
     mismatches: list[str] = []
     for key, path in expected.items():
         item = provenance.get(key)
@@ -51,6 +60,7 @@ def validate(selection: dict[str, Any], *, report: Path, scout: Path | None, ref
         "report_sha256": provenance["report"]["sha256"],
         "scout_sha256": provenance.get("scout", {}).get("sha256"),
         "reference_sha256": provenance.get("reference", {}).get("sha256"),
+        "previous_report_sha256": provenance.get("previous_report", {}).get("sha256"),
     }
 
 
@@ -60,6 +70,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--scout", type=Path)
     parser.add_argument("--reference", type=Path)
+    parser.add_argument("--previous-report", type=Path)
     args = parser.parse_args()
     try:
         result = validate(
@@ -67,6 +78,7 @@ def main() -> int:
             report=args.report,
             scout=args.scout,
             reference=args.reference,
+            previous_report=args.previous_report,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(json.dumps({"status": "invalid", "reason": str(exc)}, indent=2, sort_keys=True))
