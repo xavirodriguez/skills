@@ -169,6 +169,7 @@ def logic_evidence(scout: dict[str, Any]) -> tuple[bool, list[str]]:
 
     control_flow = bool(
         scout.get("conditional_branches", 0)
+        or scout.get("has_branch")
         or scout.get("has_loop")
         or scout.get("has_switch")
     )
