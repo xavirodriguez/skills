@@ -1,6 +1,7 @@
 ---
 name: xmap-analysis
 description: Analyze linker XMAP files and correlate symbols, sections and addresses with ROM binaries and Ghidra during legacy game reverse engineering.
+compatibility: OpenCode and Codex
 ---
 
 # XMAP Analysis
@@ -15,7 +16,7 @@ Before running the Python helpers, complete environment preflight and select the
 
 1. Preserve the original XMAP.
 2. Inspect its actual format before assuming a vendor/toolchain.
-3. Run `decomp/scripts/parse_xmap.py` to create a machine-readable baseline.
+3. Run `../../scripts/parse_xmap.py` to create a machine-readable baseline.
 4. Export program-level Ghidra evidence with `export_ghidra_program.py`.
 5. Correlate XMAP symbols with the exported Ghidra functions/symbols using `correlate_xmap.py`.
 6. Identify sections, symbols, addresses and any explicit sizes.
