@@ -93,8 +93,9 @@ def make_prompt(
 
     values = {
         "name": candidate.get("name"),
-        "address": candidate.get("address"),
-        "size": candidate.get("size"),
+        "function_entry": candidate.get("function_entry", candidate.get("address")),
+        "function_size": candidate.get("function_size", candidate.get("size")),
+        "translation_unit": candidate.get("translation_unit", candidate.get("unit")),
         "match": candidate.get("match_percent"),
         "p75": candidate.get("p75_bytes"),
         "threshold": candidate.get("threshold_bytes"),
@@ -119,8 +120,9 @@ This pack was generated from the current authoritative objdiff report.
 
 Target:
 - symbol: {name}
-- address: {address}
-- size: {size} bytes
+- function entry: {function_entry}
+- function size: {function_size} bytes
+- translation unit: {translation_unit}
 - current match: {match}%
 - remaining undecompiled P75: {p75} bytes
 - Tier 2 threshold: {threshold} bytes
