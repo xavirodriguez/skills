@@ -59,13 +59,20 @@ def function_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
                 match = 100.0 if complete else float(fuzzy or 0.0)
             except (TypeError, ValueError):
                 match = 0.0
+            function_entry = fn.get("address")
+            function_size = fn.get("size")
+            translation_unit = unit.get("name")
             rows.append({
                 "name": str(fn.get("name", unit.get("name", ""))),
-                "address": fn.get("address"),
-                "size": fn.get("size"),
+                "function_entry": function_entry,
+                "function_size": function_size,
+                "translation_unit": translation_unit,
+                # Backward-compatible aliases.
+                "address": function_entry,
+                "size": function_size,
                 "match_percent": match,
                 "complete": complete,
-                "unit": unit.get("name"),
+                "unit": translation_unit,
             })
     return rows
 
@@ -222,8 +229,12 @@ def main() -> int:
         "status": "matched" if row["match_percent"] >= 100.0 else "compare-ran",
         "target": args.target,
         "name": row["name"],
-        "address": row["address"],
-        "size": row["size"],
+        "function_entry": row["function_entry"],
+        "function_size": row["function_size"],
+        "translation_unit": row["translation_unit"],
+        # Backward-compatible aliases.
+        "address": row["function_entry"],
+        "size": row["function_size"],
         "match_percent": row["match_percent"],
         "exact_match": row["match_percent"] >= 100.0,
         "complete": row["complete"],
