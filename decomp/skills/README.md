@@ -19,6 +19,8 @@ The frontmatter \`name\` must equal the containing directory name and use the po
 
 Shared runtime helpers live once in \`decomp/scripts/\`. Do not copy them into individual skills in the canonical repository.
 
+Selection helpers include \`challenge.py\` for mechanical challenge ranking, \`validate_selection.py\` for provenance checks, and \`roi_selector.py\` for read-only post-milestone strategic ranking.
+
 For OpenCode, use \`decomp/scripts/package_opencode.py\` to generate a self-contained skill source. The generated bundle puts shared helpers under \`_runtime/\`, so the canonical source remains deduplicated.
 
 ## Loading model
