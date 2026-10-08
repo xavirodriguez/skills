@@ -49,8 +49,10 @@ def default_policy(mode: str) -> dict[str, Any]:
     }
 
 
-def load_policy(path: Path) -> dict[str, Any]:
+def load_policy(path: Path, *, require_file: bool = False) -> dict[str, Any]:
     if not path.is_file():
+        if require_file:
+            raise PermissionError(f"Required session policy does not exist: {path}")
         return {
             "format": "decomp-session-policy-v1",
             "mode": "unspecified",
@@ -83,8 +85,13 @@ def is_allowed(policy: dict[str, Any], action: str) -> bool:
     return bool(policy.get("permissions", {}).get(action, True))
 
 
-def require_allowed(policy_path: Path, action: str) -> dict[str, Any]:
-    policy = load_policy(policy_path)
+def require_allowed(
+    policy_path: Path,
+    action: str,
+    *,
+    require_file: bool = False,
+) -> dict[str, Any]:
+    policy = load_policy(policy_path, require_file=require_file)
     if not is_allowed(policy, action):
         mode = policy.get("mode", "unspecified")
         raise PermissionError(
