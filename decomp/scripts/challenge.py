@@ -284,6 +284,7 @@ def evaluate(
             "min_p75_bytes": threshold is not None and (row["size"] or 0) >= threshold,
             "confirmed_control_flow": bool(
                 evidence.get("conditional_branches", 0)
+                or evidence.get("has_branch")
                 or evidence.get("has_loop")
                 or evidence.get("has_switch")
             ),
@@ -342,6 +343,8 @@ def evaluate(
         "format": "decomp-challenge-v2",
         "summary": {
             "total_functions": len(rows),
+            "matched_functions": sum(1 for row in rows if row["match_percent"] >= 100.0),
+            "partial_functions": sum(1 for row in rows if 0.0 < row["match_percent"] < 100.0),
             "remaining_functions": len(remaining),
             "undecompiled_functions": len(undecompiled),
             "p75_bytes": p75,
