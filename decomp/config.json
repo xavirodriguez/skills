@@ -1,15 +1,19 @@
 {
   "skills": {
     "auto_discover": true,
-    "paths": [".opencode/skills/"]
+    "paths": [
+      ".codex/skills/",
+      ".opencode/skills/"
+    ]
   },
   "permissions": {
     "bash": {
       "allow": [
-        "python *extract_decomp.py *",
-        "python *pcode_rename.py *",
-        "python .opencode/skills/matching-decomp/scripts/*",
+        "python *decomp/scripts/*",
+        "python *.py *",
+        "powershell.exe *preflight.ps1 *",
         "analyzeHeadless *",
+        "analyzeHeadless.bat *",
         "ninja *",
         "objdiff *"
       ]
