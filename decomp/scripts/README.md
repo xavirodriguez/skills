@@ -136,3 +136,26 @@ The skills under `decomp/skills/*/SKILL.md` reference shared helpers using paths
 This is intentional. OpenCode resolves paths in a skill relative to the directory containing `SKILL.md`, and an explicit skill source can contain nested `SKILL.md` files. Keeping the helpers under `decomp/scripts/` preserves the same repository layout for Codex and OpenCode.
 
 Run `python validate_skill_layout.py` from this directory to verify skill names, frontmatter and referenced helper paths.
+
+
+## Session policy
+
+Create a workflow policy before autonomous execution:
+
+    python3 session_policy.py init --mode target-match --force
+
+The main modes are `explain`, `inspect`, `analyze`, `target-match`, `select` and `challenge`.
+
+Helpers that can perform gated actions accept:
+
+    --policy .decomp-agent/session-policy.json
+
+A missing policy preserves backward compatibility. An existing policy is enforced.
+
+## Hypothesis knowledge
+
+The project-level ledger lives at `.decomp-agent/hypotheses.jsonl`. Search related experiments with:
+
+    python3 hypothesis_knowledge.py .decomp-agent/hypotheses.jsonl --target <function> --query "<symptom or hypothesis>"
+
+The search ranks prior entries by textual overlap, mismatch families and successful match improvements. It is deliberately compact so previous work can be reused without loading the entire ledger into context.
