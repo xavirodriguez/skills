@@ -56,7 +56,6 @@ def main() -> int:
     parser.add_argument("--project", type=Path, default=Path("."))
     parser.add_argument("--reference", type=Path)
     parser.add_argument("--objdiff-json", type=Path)
-    parser.add_argument("--objdiff-cli", type=Path)
     parser.add_argument("--top", type=int, default=10)
     parser.add_argument("--min-size", type=int, default=256)
     parser.add_argument("-o", "--output", type=Path)
@@ -104,8 +103,6 @@ def main() -> int:
     )
 
     if args.write_packs:
-        if not args.objdiff_cli:
-            parser.error("--write-packs requires --objdiff-cli")
         prepare_script = Path(__file__).with_name("prepare_candidate.py")
         for candidate in result["tier2"]["candidates"]:
             command = [
@@ -115,8 +112,6 @@ def main() -> int:
                 str(candidate["name"]),
                 "--project",
                 str(args.project),
-                "--objdiff-cli",
-                str(args.objdiff_cli),
             ]
             if args.scout:
                 command.extend(["--scout-json", str(args.scout)])
