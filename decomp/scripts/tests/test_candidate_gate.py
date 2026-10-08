@@ -73,8 +73,8 @@ class CandidateGateTests(unittest.TestCase):
                 "units": [{
                     "name": "u",
                     "functions": [
-                        {"name": "A", "size": 64, "address": "0x1000"},
-                        {"name": "B", "size": 64, "address": "0x1100"},
+                        {"name": "A", "size": 64, "address": "0x1000", "fuzzy_match_percent": 0},
+                        {"name": "B", "size": 64, "address": "0x1100", "fuzzy_match_percent": 0},
                     ],
                 }]
             },
@@ -83,6 +83,19 @@ class CandidateGateTests(unittest.TestCase):
         summary = compact_summary(result)
         self.assertEqual(summary["target_incomplete_functions"], 2)
         self.assertNotIn("functions", summary)
+
+    def test_unknown_match_data_is_excluded(self) -> None:
+        objdiff = {
+            "units": [{
+                "name": "u",
+                "functions": [
+                    {"name": "Unknown", "size": 64, "address": "0x1000"},
+                    {"name": "Zero", "size": 64, "address": "0x1100", "fuzzy_match_percent": 0},
+                ],
+            }]
+        }
+        result = gate(objdiff, {"functions": []})
+        self.assertEqual([item["name"] for item in result["functions"]], ["Zero"])
 
 if __name__ == "__main__":
     unittest.main()

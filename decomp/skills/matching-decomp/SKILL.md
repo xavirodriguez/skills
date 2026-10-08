@@ -92,6 +92,66 @@ The goal is not merely to understand a function. The goal is to reproduce the ta
 
 **Success criterion:** the project's authoritative comparison reports an exact match.
 
+## SELECT protocol
+
+SELECT is read-only ranking. It must not edit source, build, compare functions, or write challenge results.
+
+Use this order:
+
+    authoritative report
+      -> verify match data availability
+      -> fresh Ghidra/XMAP evidence
+      -> challenge.py ranking
+      -> optional artifact freshness validation
+      -> present ranked candidates
+
+Do not read plugin cache files such as `.codex/plugins/cache/.../SKILL.md` as project evidence. The active skill is already loaded; cache layout is an implementation detail.
+
+When an existing selection artifact is reused, validate its provenance first with `validate_selection.py`. An artifact without supported provenance, or with a mismatching SHA-256 for any supplied input, is stale and must not be treated as authoritative.
+
+Missing `fuzzy_match_percent` is `unknown`, not zero. Unknown match data cannot enter the zero-match population or a challenge tier.
+
+## POST-MILESTONE ROI selection
+
+Use ROI selection after a meaningful authoritative progress milestone, such as a translation unit reaching 100%, a related function family becoming exact, or a reusable structure/API becoming well established.
+
+ROI selection is read-only strategic planning. It must not edit source, build candidates, compare candidate functions, or advance the challenge batch.
+
+Run the deterministic helper:
+
+    <python> ../../scripts/roi_selector.py \
+      .decomp-agent/challenge/report.json \
+      --scout .decomp-agent/challenge/tier2-scout.json \
+      --project . \
+      --reference .decomp-agent/reference/ph-analysis.json \
+      --top 5 \
+      -o .decomp-agent/challenge/roi-selection.json
+
+When a previous authoritative report is available, pass it with \`--previous-report\` to detect newly completed units and exact-function deltas.
+
+The helper produces three strategic scores:
+
+- **EASE** — expected feasibility from size, control-flow complexity, code-generation risk, available static/source/reference evidence, and prior matching signals.
+- **IMPACT** — expected value of resolving the function for callers, callees, shared state, reuse and important code paths.
+- **UNLOCK** — expected second-order value from clarifying structures, globals, call patterns, anchors and neighboring work.
+- **ROI** — \`EASE × IMPACT / 100\`.
+
+UNLOCK is a strategic tie-breaker and justification signal, not a third required multiplication.
+
+The ranking must:
+1. start from the current authoritative report;
+2. exclude exact matches and functions with unknown match data;
+3. distinguish observations from hypotheses;
+4. penalize missing evidence rather than inventing it;
+5. consider callers, callees, globals, structures, neighboring patterns and known compiler idioms;
+6. explain what becomes easier after the selected function is solved;
+7. return exactly five candidates when at least five evidence-backed candidates exist;
+8. identify one \`RECOMMENDED_NEXT\` target and its expected unlock.
+
+A previous ROI/selection artifact is cache context only. Its provenance must be validated before reuse. Any authoritative report refresh after a milestone invalidates rankings whose recorded report SHA-256 no longer matches.
+
+\`ROI\` is a prioritization heuristic, not a probability of success.
+
 ## Execution guardrails
 
 Autonomous matching must use the repository helpers as the execution boundary. These are hard rules, not preferences:

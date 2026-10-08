@@ -7,7 +7,6 @@ import argparse
 import json
 import math
 import re
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -97,7 +96,8 @@ def function_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
                 continue
             fuzzy = function.get("fuzzy_match_percent")
             complete = function.get("complete")
-            match = 100.0 if complete is True else to_float(fuzzy, 0.0)
+            match_available = complete is True or fuzzy is not None
+            match = 100.0 if complete is True else to_float(fuzzy) if fuzzy is not None else None
             function_entry = function.get("address")
             function_size = to_int(function.get("size"))
             translation_unit = unit.get("name")
@@ -110,6 +110,7 @@ def function_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
                 "address": function_entry,
                 "size": function_size,
                 "match_percent": match,
+                "match_available": match_available,
                 "unit": translation_unit,
                 "unit_metadata": unit.get("metadata", {}),
             })
@@ -149,6 +150,8 @@ def obvious_non_logic(name: str) -> tuple[bool, str | None]:
 
 
 def match_kind(row: dict[str, Any], source_info: dict[str, Any] | None) -> str:
+    if not row.get("match_available"):
+        return "unknown_match_data"
     if row["match_percent"] >= 100.0:
         return "matched"
     if row["match_percent"] > 0.0:
@@ -282,9 +285,16 @@ def evaluate(
     index = scout_index(scout)
     source_map = index_sources(project) if project else {}
 
+    unavailable = [
+        row for row in rows
+        if not row.get("match_available") and row["size"] and row["size"] > 0
+    ]
     remaining = [
         row for row in rows
-        if row["match_percent"] < 100.0 and row["size"] and row["size"] > 0
+        if row.get("match_available")
+        and row["match_percent"] < 100.0
+        and row["size"]
+        and row["size"] > 0
     ]
     undecompiled = [row for row in remaining if row["match_percent"] <= 0.0]
     p75 = percentile75([row["size"] for row in undecompiled if row["size"]])
@@ -382,8 +392,15 @@ def evaluate(
         "format": "decomp-challenge-v2",
         "summary": {
             "total_functions": len(rows),
-            "matched_functions": sum(1 for row in rows if row["match_percent"] >= 100.0),
-            "partial_functions": sum(1 for row in rows if 0.0 < row["match_percent"] < 100.0),
+            "unavailable_match_data_functions": len(unavailable),
+            "matched_functions": sum(
+                1 for row in rows
+                if row.get("match_available") and row["match_percent"] >= 100.0
+            ),
+            "partial_functions": sum(
+                1 for row in rows
+                if row.get("match_available") and 0.0 < row["match_percent"] < 100.0
+            ),
             "remaining_functions": len(remaining),
             "undecompiled_functions": len(undecompiled),
             "p75_bytes": p75,
@@ -408,19 +425,6 @@ def evaluate(
     }
 
 
-def run_objdiff(objdiff_cli: Path, project: Path, symbol: str) -> tuple[int, str]:
-    result = subprocess.run(
-        [str(objdiff_cli), "diff", "-p", str(project), symbol],
-        cwd=project,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-    )
-    return result.returncode, result.stdout
-
-
-
 def compact_summary(result: dict[str, Any]) -> dict[str, Any]:
     summary = result["summary"]
     candidates = result.get("tier2", {}).get("candidates", [])
@@ -428,6 +432,7 @@ def compact_summary(result: dict[str, Any]) -> dict[str, Any]:
         "format": result["format"],
         "status": "written",
         "remaining_functions": summary["remaining_functions"],
+        "unavailable_match_data_functions": summary.get("unavailable_match_data_functions", 0),
         "undecompiled_functions": summary["undecompiled_functions"],
         "p75_bytes": summary["p75_bytes"],
         "tier2_threshold_bytes": summary["tier2_threshold_bytes"],
@@ -443,6 +448,15 @@ def compact_summary(result: dict[str, Any]) -> dict[str, Any]:
             for item in candidates[:5]
         ],
     }
+
+def file_sha256(path: Path) -> str:
+    import hashlib
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -491,6 +505,27 @@ def main() -> int:
         min_tier2_size=args.min_size,
     )
     result["tier2"]["candidates"] = result["tier2"]["candidates"][:args.top]
+
+    result["provenance"] = {
+        "format": "decomp-selection-provenance-v1",
+        "engine": result["format"],
+        "report": {
+            "path": str(args.report_json.resolve()),
+            "sha256": file_sha256(args.report_json.resolve()),
+        },
+    }
+    if args.scout:
+        scout_path = args.scout.resolve()
+        result["provenance"]["scout"] = {
+            "path": str(scout_path),
+            "sha256": file_sha256(scout_path),
+        }
+    if args.reference:
+        reference_path = args.reference.resolve()
+        result["provenance"]["reference"] = {
+            "path": str(reference_path),
+            "sha256": file_sha256(reference_path),
+        }
 
     rendered = json.dumps(result, indent=2, sort_keys=True)
     if args.output:

@@ -153,6 +153,48 @@ The next candidate may only come from:
     challenge_batch.py next --session ... --claim
 
 and only after the current target has reached the terminal matched state.
+### Tier 2 selection contract
+
+Selection must be derived from the current authoritative report and current Ghidra/XMAP evidence.
+
+- Existing selection artifacts are cacheable context only, never the source of truth.
+- Before reusing an artifact, validate its provenance with `validate_selection.py`.
+- If provenance is missing or stale, regenerate from the current authoritative inputs, unless the user explicitly forbids writes; in that case rank directly from the authoritative inputs without claiming the old artifact is current.
+- Missing match data is `unknown`; it must not be converted to `0%` and must not satisfy the zero-match Tier 2 gate.
+- A failed read of a plugin-cache skill file is not a project/infrastructure blocker. Do not scan arbitrary cache or drive locations to replace it.
+- Selection does not claim that a candidate is executable or matchable. It only produces an ordered evidence-backed ranking.
+
+### Post-milestone strategic reselection
+
+After a meaningful exact-match milestone, recompute the strategic next target rather than continuing to use the previous Tier 2 ordering.
+
+Run the read-only ROI selector:
+
+    <python> ../../scripts/roi_selector.py \
+      .decomp-agent/challenge/report.json \
+      --scout .decomp-agent/challenge/tier2-scout.json \
+      --project . \
+      --reference .decomp-agent/reference/ph-analysis.json \
+      --top 5 \
+      -o .decomp-agent/challenge/roi-selection.json
+
+When available, pass the previous authoritative report with \`--previous-report\`. The helper reports newly completed translation units and newly exact functions so the selection can explicitly account for the changed knowledge state.
+
+ROI selection is separate from the mechanical Tier 2 gate. It answers which unresolved function should be attacked next for maximum useful progress, not which function merely satisfies the challenge threshold.
+
+For each candidate evaluate:
+
+    EASE
+    IMPACT
+    UNLOCK
+    ROI = EASE * IMPACT / 100
+
+Prefer high ROI, then use UNLOCK to break ties and justify candidates that can establish reusable anchors, structures, globals or call patterns.
+
+A refreshed authoritative report changes the provenance hash. Treat a previous ROI selection as stale after such a refresh and regenerate it before using the ranking.
+
+Do not edit, build or compare candidates during ROI selection. The selected target must still pass the normal matching/decompilation and challenge gates before execution.
+
 ## Candidate ranking
 
 The selector exposes `expected_value_score` in addition to `success_score`, `game_logic_score` and `complexity_score`.
