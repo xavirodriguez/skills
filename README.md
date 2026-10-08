@@ -147,6 +147,6 @@ Ejemplo:
 
     <python> decomp/scripts/challenge.py .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --project . --top 10 -o .decomp-agent/challenge/tier2-selection.json
 
-    <python> decomp/scripts/prepare_candidate.py .decomp-agent/challenge/tier2-selection.json <candidate> --project . --objdiff-cli .\\objdiff-cli.exe --scout-json .decomp-agent/challenge/tier2-scout.json
+    <python> decomp/scripts/prepare_candidate.py .decomp-agent/challenge/tier2-selection.json <candidate> --project . --compare-json .decomp-agent/challenge/compare-<candidate>.json --scout-json .decomp-agent/challenge/tier2-scout.json
 
-El pack contiene el contexto disponible para el agente y un prompt corto. La clasificación final de real game logic sigue requiriendo revisión.
+El pack contiene el contexto disponible para el agente y un prompt corto. La preparación no ejecuta objdiff ni abre una interfaz interactiva; el resultado de comparación debe proceder de compare_target.py. La clasificación final de real game logic sigue requiriendo revisión.
