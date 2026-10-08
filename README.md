@@ -115,6 +115,8 @@ Después de inspeccionar el proyecto, el agente debe descubrir y usar sus comand
 
 La implementación está documentada en `decomp/MANUAL.md`.
 
+La integración con OpenCode está documentada en `decomp/OPENCODE.md`. Las políticas de sesión y el histórico de hipótesis se aplican también a los helpers autónomos.
+
 
 ### Tier 2 automatizado
 
