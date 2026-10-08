@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -29,9 +31,6 @@ class RunMatchShellTests(unittest.TestCase):
 
 
     def test_git_state_excludes_agent_artifacts(self) -> None:
-        import subprocess
-        import tempfile
-
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
@@ -54,10 +53,6 @@ class RunMatchShellTests(unittest.TestCase):
             self.assertTrue(any("source.cpp" in item for item in state["changed_files"]))
             self.assertFalse(any(".decomp-agent" in item for item in state["changed_files"]))
             self.assertIn("source.cpp", state["diff_stat"])
-
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class RunMatchTelemetryTests(unittest.TestCase):
