@@ -213,7 +213,7 @@ A Tier 2 target must satisfy every gate:
 
 The engine's game_logic_score is a screening signal, not proof. Manually verify that the function implements real game logic and is not merely an accessor, wrapper, initializer or data helper.
 
-Choose the highest-success candidate among the eligible set rather than blindly choosing the largest one.
+Choose the highest expected-value candidate among the eligible set rather than blindly choosing the largest one.
 
 ## 8. Tier 3
 
