@@ -58,8 +58,17 @@ For an exact match, use `--exact` together with the authoritative report refresh
 
     <python> ../../scripts/challenge_batch.py record --session .decomp-agent/challenge/session.json --target <candidate> --before <match-before> --after 100 --exact --refresh-command "<authoritative report/build command>" --report .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --reference .decomp-agent/reference/ph-analysis.json --project . --policy .decomp-agent/session-policy.json --require-policy
 
+After the exact-match transition, collect object/link integration evidence and record it:
+
+    <python> ../../scripts/challenge_batch.py integration-record --session .decomp-agent/challenge/session.json --target <candidate> --status pass --evidence .decomp-agent/integration/<candidate>.json --policy .decomp-agent/session-policy.json --require-policy
+
+Then run the authoritative refresh before asking for the next target:
+
+    <python> ../../scripts/challenge_batch.py refresh --session .decomp-agent/challenge/session.json --project . --refresh-command "<authoritative report/build command>" --report .decomp-agent/challenge/report.json --scout .decomp-agent/challenge/tier2-scout.json --reference .decomp-agent/reference/ph-analysis.json --policy .decomp-agent/session-policy.json --require-policy
 Rules:
-- An exact match clears the active target, increments `matches_completed`, and triggers the mandatory authoritative refresh.
+- An exact function match enters `integration-pending`; it does not clear the active target and does not increment `matches_completed`.
+- Integration `pass` enters `refresh-required`; it still does not clear the active target.
+- The authoritative report refresh is mandatory. Only after refresh may the controller finalize the target as `matched`, clear `current_target`, increment `matches_completed` and select the next candidate.
 - A positive match delta resets stagnation.
 - A non-improving experiment increments stagnation.
 - When stagnation reaches the configured threshold, the candidate is automatically marked `blocked` and the controller can move to the next candidate.
