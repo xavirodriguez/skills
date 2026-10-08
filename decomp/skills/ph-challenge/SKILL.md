@@ -76,6 +76,31 @@ Do not use a fixed total experiment count as the stopping condition. Stop becaus
 - the current candidate is stagnant and has been auto-blocked, after which the next candidate is selected;
 - or a real infrastructure blocker halts the session.
 
+### Match and integration state
+
+A function-level exact match is a transition, not the end of the target lifecycle:
+
+    MATCH_EXACT
+        -> INTEGRATION_CHECK
+            -> INTEGRATION_PASS -> refresh -> next candidate
+            -> INTEGRATION_MISMATCH -> keep current target -> fix integration
+            -> INTEGRATION_BLOCKER -> halt session
+
+When a target reaches 100%, `challenge_batch.py` must leave it in `integration-pending`. Do not claim the next candidate until the authoritative object/link integration check passes.
+
+Keep these locations separate in notes and candidate summaries:
+
+- function entry/size: the machine-code function itself;
+- translation unit/object: the containing object/source unit;
+- integration range: the linker/delink range being verified;
+- padding: bytes owned outside the function body but inside the integration range.
+
+Never describe an object/range boundary as the function address. Never mirror a USA/EUR integration change without independent evidence for each region.
+
+Integration evidence should be recorded with:
+
+    python ../../scripts/challenge_batch.py integration-record       --session .decomp-agent/challenge/session.json       --target <function>       --status pass       --evidence .decomp-agent/integration/<target>.json       --policy .decomp-agent/session-policy.json --require-policy
+
 ### Experiment execution guardrails
 
 For every candidate experiment, use this execution contract:
