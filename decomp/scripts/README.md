@@ -97,7 +97,7 @@ See decomp/MANUAL.md for the complete Klonoa workflow and safety rules.
 
 ## Tier 2 challenge automation
 
-For Phantom Hourglass Tier 2, use the targeted Ghidra scout and autopilot instead of the generic top-100 scout:
+For Phantom Hourglass Tier 2, use the targeted Ghidra scout and the unified challenge engine instead of the generic top-100 scout:
 
     analyzeHeadless <project-dir> <project-name> -process <program> \
       -scriptPath decomp/scripts \
