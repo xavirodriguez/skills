@@ -79,6 +79,18 @@ def make_prompt(
 ) -> str:
     scout = candidate.get("scout", {})
     reference = candidate.get("reference") or {}
+    knowledge = prior_knowledge or []
+    knowledge_lines = []
+    for item in compact(knowledge)[:5]:
+        knowledge_lines.append(
+            "- {target}: {hypothesis} -> {lesson}".format(
+                target=item.get("target"),
+                hypothesis=item.get("hypothesis"),
+                lesson=item.get("lesson"),
+            )
+        )
+    prior_lessons = "\n".join(knowledge_lines) if knowledge_lines else "- None available."
+
     values = {
         "name": candidate.get("name"),
         "address": candidate.get("address"),
@@ -100,18 +112,6 @@ def make_prompt(
         "signature": scout.get("signature", ""),
         "reference_action": reference.get("recommended_action"),
     }
-    knowledge = prior_knowledge or []
-    knowledge_lines = []
-    for item in compact(knowledge)[:5]:
-        knowledge_lines.append(
-            "- {target}: {hypothesis} -> {lesson}".format(
-                target=item.get("target"),
-                hypothesis=item.get("hypothesis"),
-                lesson=item.get("lesson"),
-            )
-        )
-    prior_lessons = "\n".join(knowledge_lines) if knowledge_lines else "- None available."
-
     return """# Decomp candidate: {name}
 
 This pack was generated from the current authoritative objdiff report.
