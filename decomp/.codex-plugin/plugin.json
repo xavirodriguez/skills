@@ -1,6 +1,6 @@
 {
   "name": "decomp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Matching decompilation workflows for legacy game and software reverse engineering.",
   "author": {
     "name": "Xavi Rodríguez",
