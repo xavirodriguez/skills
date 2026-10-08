@@ -280,27 +280,39 @@ def record_result(
         candidate["tool_failures"] = int(candidate.get("tool_failures") or 0) + 1
         candidate["last_failure"] = "tool-transport-failure"
     elif exact or match_after >= 100.0:
+        if candidate.get("status") == "integration-pending":
+            raise ValueError(f"Target already awaits integration verification: {target}")
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
         candidate.pop("last_failure", None)
-        candidate["status"] = "matched"
+        candidate["status"] = "integration-pending"
         candidate["stagnation"] = 0
-        candidate["matched_at"] = now_utc()
-        session["matches_completed"] = sum(
-            1 for item in queue if item.get("status") == "matched"
+        candidate["function_matched_at"] = now_utc()
+        candidate["integration_attempts"] = int(candidate.get("integration_attempts") or 0)
+        candidate["integration"] = {
+            "status": "pending",
+            "function_match_percent": match_after,
+            "started_at": now_utc(),
+        }
+        session["function_matches_completed"] = sum(
+            1
+            for item in queue
+            if item.get("status") in {"integration-pending", "matched"}
         )
-        if session.get("current_target") == candidate["key"]:
-            session["current_target"] = None
+        session["phase"] = "integration"
     elif infrastructure_blocker:
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
+        session["phase"] = "halted"
         session["halted"] = True
         session["stop_reason"] = "infrastructure-blocker"
     elif match_after > match_before:
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
+        session["phase"] = "matching"
         candidate.pop("last_failure", None)
         candidate["status"] = "active"
         candidate["stagnation"] = 0
     else:
         candidate["attempts"] = int(candidate.get("attempts") or 0) + 1
+        session["phase"] = "matching"
         candidate.pop("last_failure", None)
         candidate["status"] = "active"
         candidate["stagnation"] = int(candidate.get("stagnation") or 0) + 1
@@ -336,6 +348,84 @@ def record_result(
         session["stop_reason"] = "quota-reached"
     return candidate
 
+
+def record_integration(
+    session: dict[str, Any],
+    *,
+    target: str,
+    status: str,
+    evidence: dict[str, Any] | None,
+    lesson: str | None,
+) -> dict[str, Any]:
+    from integration_check import validate_document
+
+    queue = session.get("queue", [])
+    candidate = next(
+        (
+            item
+            for item in queue
+            if item.get("name") == target or item.get("key") == target
+        ),
+        None,
+    )
+    if candidate is None:
+        raise ValueError(f"Target is not present in session queue: {target}")
+    if candidate.get("status") != "integration-pending":
+        raise ValueError(f"Target is not awaiting integration verification: {target}")
+    if status not in {"pass", "mismatch", "infrastructure-blocker"}:
+        raise ValueError(f"Unsupported integration status: {status}")
+    normalized = None
+    if status != "infrastructure-blocker":
+        if evidence is None:
+            raise ValueError("Integration result requires evidence JSON")
+        normalized = validate_document(evidence, target)
+
+    now = now_utc()
+    candidate["integration_attempts"] = int(candidate.get("integration_attempts") or 0) + 1
+    candidate["integration"] = {
+        "status": "passed" if status == "pass" else status,
+        "evidence": normalized,
+        "lesson": lesson,
+        "recorded_at": now,
+    }
+
+    if status == "pass":
+        candidate["status"] = "matched"
+        candidate["matched_at"] = now
+        session["current_target"] = None
+        session["phase"] = "matching"
+        session["integration_matches_completed"] = sum(
+            1 for item in queue if item.get("status") == "matched"
+        )
+        session["matches_completed"] = session["integration_matches_completed"]
+    elif status == "mismatch":
+        candidate["status"] = "integration-pending"
+        session["phase"] = "integration"
+    else:
+        candidate["status"] = "integration-pending"
+        session["phase"] = "halted"
+        session["halted"] = True
+        session["stop_reason"] = "integration-infrastructure-blocker"
+
+    session.setdefault("history", []).append({
+        "timestamp": now,
+        "phase": "integration",
+        "target": candidate.get("name"),
+        "status": "integration-passed" if status == "pass" else status,
+        "lesson": lesson,
+        "counted_as_stagnation": False,
+        "counted_as_attempt": False,
+        "evidence": normalized,
+    })
+    session["updated_at"] = now
+
+    quota = int(session.get("target_quota") or 0)
+    if status == "pass" and quota > 0 and session["matches_completed"] >= quota:
+        session["halted"] = True
+        session["phase"] = "halted"
+        session["stop_reason"] = "quota-reached"
+
+    return candidate
 
 def refresh_report(
     session_path: Path,
