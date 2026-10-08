@@ -18,5 +18,15 @@
         "objdiff *"
       ]
     }
+  },
+  "session_policy": {
+    "path": ".decomp-agent/session-policy.json",
+    "enforced_by": [
+      "decomp/scripts/run_match.py",
+      "decomp/scripts/challenge.py",
+      "decomp/scripts/challenge_autopilot.py",
+      "decomp/scripts/challenge_selector.py",
+      "decomp/scripts/candidate_gate.py"
+    ]
   }
 }
