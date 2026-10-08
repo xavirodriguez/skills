@@ -441,6 +441,13 @@ def compact_summary(result: dict[str, Any]) -> dict[str, Any]:
         ],
     }
 
+def file_sha256(path: Path) -> str:
+    import hashlib
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report_json", type=Path)
@@ -489,8 +496,28 @@ def main() -> int:
     )
     result["tier2"]["candidates"] = result["tier2"]["candidates"][:args.top]
 
-    rendered = json.dumps(result, indent=2, sort_keys=True)
-    if args.output:
+    result["provenance"] = {
+        "format": "decomp-selection-provenance-v1",
+        "engine": result["format"],
+        "report": {
+            "path": str(args.report_json.resolve()),
+            "sha256": file_sha256(args.report_json.resolve()),
+        },
+    }
+    if args.scout:
+        scout_path = args.scout.resolve()
+        result["provenance"]["scout"] = {
+            "path": str(scout_path),
+            "sha256": file_sha256(scout_path),
+        }
+    if args.reference:
+        reference_path = args.reference.resolve()
+        result["provenance"]["reference"] = {
+            "path": str(reference_path),
+            "sha256": file_sha256(reference_path),
+        }
+
+    rendered = json.dumps(result, indent=2, sort_keys=True)    if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered + "\n", encoding="utf-8")
         if args.full_output:
