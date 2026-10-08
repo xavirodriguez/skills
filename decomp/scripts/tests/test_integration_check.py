@@ -22,6 +22,7 @@ def evidence(regions=None):
                 "padding": {"before": [], "after": [{"start": "0x0204256A", "end": "0x0204256B"}]},
                 "next_boundary": "0x020425D4",
                 "evidence": ["xMAP boundary", "objdump object layout"],
+                "verification": {"status": "pass", "function_match_percent": 100.0, "command": "ninja check"},
                 "independent_evidence": True,
             }
         },
@@ -52,6 +53,19 @@ class IntegrationEvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_document(payload)
 
+    def test_requires_authoritative_verification(self):
+        payload = evidence({
+            "usa": {
+                "function": {"entry": "0x02042540", "size": 0x30},
+                "object": {"name": "overlay.o", "start": "0x0204253C", "end": "0x020425D3"},
+                "range": {"kind": "delink", "start": "0x0204253C", "end": "0x020425D3"},
+                "padding": {"before": [], "after": []},
+                "evidence": ["xMAP"],
+                "independent_evidence": True,
+            }
+        })
+        with self.assertRaises(ValueError):
+            validate_document(payload)
     def test_rejects_function_outside_declared_range(self):
         payload = evidence({
             "usa": {
