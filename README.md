@@ -101,6 +101,7 @@ inspect -> scout -> analyze -> propose -> dry-run -> apply one change
 - `decomp/scripts/parse_compare.py` — extrae evidencia estructurada de logs de comparación.
 - `decomp/scripts/parse_xmap.py` — analiza linker maps/XMAP.
 - `decomp/scripts/candidate_gate.py` — filtra evidencia de referencia por función.
+- `decomp/scripts/validate_selection.py` — valida la procedencia SHA-256 de artefactos de selección antes de reutilizarlos.
 - `decomp/MANUAL.md` — manual completo del workflow.
 
 ### Uso mínimo
