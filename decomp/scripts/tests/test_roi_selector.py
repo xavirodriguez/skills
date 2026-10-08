@@ -84,18 +84,31 @@ class RoiSelectorTests(unittest.TestCase):
 
     def test_milestone_delta_detects_newly_completed_unit(self) -> None:
         previous = self.make_report()
-        previous["units"][0]["functions"][-3]["fuzzy_match_percent"] = 0
-        previous["units"][0]["functions"][-2]["fuzzy_match_percent"] = 0
-        previous["units"][0]["functions"][-1]["fuzzy_match_percent"] = 0
+        previous["units"].append({
+            "name": "milestone",
+            "functions": [
+                {"name": "M1", "size": 32, "address": "0x2000", "fuzzy_match_percent": 0},
+                {"name": "M2", "size": 32, "address": "0x2020", "fuzzy_match_percent": 0},
+                {"name": "M3", "size": 32, "address": "0x2040", "fuzzy_match_percent": 0},
+            ],
+        })
 
         current = self.make_report()
+        current["units"].append({
+            "name": "milestone",
+            "functions": [
+                {"name": "M1", "size": 32, "address": "0x2000", "fuzzy_match_percent": 100},
+                {"name": "M2", "size": 32, "address": "0x2020", "fuzzy_match_percent": 100},
+                {"name": "M3", "size": 32, "address": "0x2040", "fuzzy_match_percent": 100},
+            ],
+        })
         result = select(
             current,
             self.make_scout(),
             previous_report=previous,
         )
         self.assertTrue(result["milestone"]["available"])
-        self.assertEqual(result["milestone"]["newly_completed_units"], ["u"])
+        self.assertEqual(result["milestone"]["newly_completed_units"], ["milestone"])
         self.assertEqual(result["milestone"]["new_exact_functions"], 3)
 
 
