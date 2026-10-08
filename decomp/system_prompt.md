@@ -22,6 +22,7 @@ The skills above are the source of truth for routing, evidence hierarchy, failur
 - Stop on concrete infrastructure blockers.
 - Treat source-induced compiler/linker errors and compare mismatches as evidence.
 - Honor explicit user constraints before editing, building, comparing or selecting.
+- Never invoke nested coding agents; never use shell-driven `apply_patch`; use the source-edit helper for changes and the run-match harness for experiments.
 
 ## Runtime state
 
