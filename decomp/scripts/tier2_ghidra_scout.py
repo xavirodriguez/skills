@@ -1,11 +1,5 @@
 #@category Decomp
-"""Ghidra evidence collector for PH Tier 2 challenge candidates.
-
-Usage:
-  analyzeHeadless <project-dir> <project-name> -process <program> \
-    -scriptPath <skills>/decomp/scripts \
-    -postScript tier2_ghidra_scout.py <objdiff-report.json>
-"""
+"""Ghidra scout for functions that already satisfy the Tier 2 size gate."""
 
 import json
 import math
@@ -26,12 +20,11 @@ def to_int(value):
     if isinstance(value, int):
         return value
     if isinstance(value, str):
-        text = value.strip()
         try:
-            return int(text, 0)
+            return int(value.strip(), 0)
         except ValueError:
             try:
-                return int(text, 16)
+                return int(value.strip(), 16)
             except ValueError:
                 return None
     return None
@@ -63,11 +56,14 @@ def report_functions(report):
         for function in functions:
             if not isinstance(function, dict):
                 continue
-            fuzzy = function.get("fuzzy_match_percent", 0)
-            match = float(fuzzy) if fuzzy is not None else 0.0
             size = to_int(function.get("size"))
             if size is None:
                 continue
+            fuzzy = function.get("fuzzy_match_percent", 0)
+            try:
+                match = float(fuzzy) if fuzzy is not None else 0.0
+            except (TypeError, ValueError):
+                match = 0.0
             rows.append({
                 "name": str(function.get("name", "")),
                 "address": function.get("address"),
@@ -83,27 +79,22 @@ def resolve_function(query):
     for function in fm.getFunctions(True):
         if function.getName() == query:
             return function
-
     try:
         address = currentProgram.getAddressFactory().getDefaultAddressSpace().getAddress(query)
-        function = fm.getFunctionContaining(address)
-        if function is not None:
-            return function
+        return fm.getFunctionContaining(address)
     except Exception:
-        pass
-    return None
+        return None
 
 
 def instructions(function):
-    listing = currentProgram.getListing()
-    iterator = listing.getInstructions(function.getBody(), True)
+    iterator = currentProgram.getListing().getInstructions(function.getBody(), True)
     result = []
     while iterator.hasNext():
         result.append(iterator.next())
     return result
 
 
-def blocks(function):
+def block_count(function):
     try:
         model = BasicBlockModel(currentProgram)
         iterator = model.getCodeBlocksContaining(function.getBody(), monitor)
@@ -118,72 +109,79 @@ def blocks(function):
 
 def control_flow(function, insns):
     body = function.getBody()
-    has_branch = False
-    has_loop = False
-    has_switch = False
-    has_store = False
+    conditional_branches = 0
+    unconditional_branches = 0
+    computed_jumps = 0
+    back_edges = 0
+    max_flow_targets = 0
+    stores = 0
 
     for instruction in insns:
         flow = safe(lambda: instruction.getFlowType())
         if flow is not None:
-            has_branch = has_branch or safe(lambda: flow.isJump(), False)
-            has_switch = has_switch or safe(lambda: flow.isComputed(), False)
+            if safe(lambda: flow.isConditional(), False):
+                conditional_branches += 1
+            elif safe(lambda: flow.isJump(), False):
+                unconditional_branches += 1
+            if safe(lambda: flow.isComputed(), False):
+                computed_jumps += 1
 
-        for target in safe(lambda: instruction.getFlows(), []) or []:
+        flows = safe(lambda: list(instruction.getFlows()), []) or []
+        max_flow_targets = max(max_flow_targets, len(flows))
+
+        for target in flows:
             try:
                 if body.contains(target) and target.getOffset() <= instruction.getAddress().getOffset():
-                    has_loop = True
+                    back_edges += 1
             except Exception:
                 pass
 
-        if len(safe(lambda: list(instruction.getFlows()), []) or []) > 1:
-            has_switch = True
-
         for op in instruction.getPcode():
             if safe(lambda o=op: str(o.getMnemonic()).upper() == "STORE", False):
-                has_store = True
+                stores += 1
 
+    has_switch = computed_jumps > 0 or max_flow_targets > 2
+    has_loop = back_edges > 0
+    has_branch = conditional_branches > 0 or unconditional_branches > 0
     return {
-        "has_branch": bool(has_branch),
-        "has_loop": bool(has_loop),
-        "has_switch": bool(has_switch),
-        "has_store": bool(has_store),
+        "conditional_branches": conditional_branches,
+        "unconditional_branches": unconditional_branches,
+        "computed_jumps": computed_jumps,
+        "back_edges": back_edges,
+        "max_flow_targets": max_flow_targets,
+        "has_branch": has_branch,
+        "has_loop": has_loop,
+        "has_switch": has_switch,
+        "stores": stores,
+        "has_store": stores > 0,
     }
 
 
 def global_count(function, insns):
     listing = currentProgram.getListing()
     seen = set()
-    count = 0
     for instruction in insns:
         for ref in instruction.getReferencesFrom():
             target = ref.getToAddress()
             if target is None:
                 continue
             data = safe(lambda t=target: listing.getDataAt(t))
-            if data is None:
-                continue
-            key = str(target)
-            if key not in seen:
-                seen.add(key)
-                count += 1
-    return count
+            if data is not None:
+                seen.add(str(target))
+    return len(seen)
 
 
 def evidence(function):
     insns = instructions(function)
     cf = control_flow(function, insns)
-    callers = len(list(function.getCallingFunctions(monitor)))
-    callees = len(list(function.getCalledFunctions(monitor)))
-
     return {
         "name": function.getName(),
         "entry": str(function.getEntryPoint()),
         "signature": safe(lambda: str(function.getSignature()), ""),
         "instructions": len(insns),
-        "blocks": blocks(function),
-        "callers": callers,
-        "callees": callees,
+        "blocks": block_count(function),
+        "callers": len(list(function.getCallingFunctions(monitor))),
+        "callees": len(list(function.getCalledFunctions(monitor))),
         "globals": global_count(function, insns),
         "is_thunk": safe(lambda: function.isThunk(), False),
         "is_external": safe(lambda: function.isExternal(), False),
@@ -226,27 +224,33 @@ def main():
             })
             continue
 
-        ghidra = evidence(function)
+        evidence_data = evidence(function)
         candidates.append({
             **row,
-            "entry": ghidra["entry"],
-            "instructions": ghidra["instructions"],
-            "blocks": ghidra["blocks"],
-            "callers": ghidra["callers"],
-            "callees": ghidra["callees"],
-            "globals": ghidra["globals"],
-            "signature": ghidra["signature"],
-            "has_branch": ghidra["has_branch"],
-            "has_loop": ghidra["has_loop"],
-            "has_switch": ghidra["has_switch"],
-            "has_store": ghidra["has_store"],
-            "is_thunk": ghidra["is_thunk"],
-            "is_external": ghidra["is_external"],
-            "ghidra_name": ghidra["name"],
+            "entry": evidence_data["entry"],
+            "instructions": evidence_data["instructions"],
+            "blocks": evidence_data["blocks"],
+            "callers": evidence_data["callers"],
+            "callees": evidence_data["callees"],
+            "globals": evidence_data["globals"],
+            "signature": evidence_data["signature"],
+            "has_branch": evidence_data["has_branch"],
+            "has_loop": evidence_data["has_loop"],
+            "has_switch": evidence_data["has_switch"],
+            "conditional_branches": evidence_data["conditional_branches"],
+            "unconditional_branches": evidence_data["unconditional_branches"],
+            "computed_jumps": evidence_data["computed_jumps"],
+            "back_edges": evidence_data["back_edges"],
+            "max_flow_targets": evidence_data["max_flow_targets"],
+            "stores": evidence_data["stores"],
+            "has_store": evidence_data["has_store"],
+            "is_thunk": evidence_data["is_thunk"],
+            "is_external": evidence_data["is_external"],
+            "ghidra_name": evidence_data["name"],
         })
 
     print(json.dumps({
-        "format": "ph-tier2-ghidra-v1",
+        "format": "ph-tier2-ghidra-v2",
         "summary": {
             "undecompiled_functions": len(undecompiled),
             "p75_bytes": p75,
