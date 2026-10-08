@@ -181,6 +181,24 @@ Important: this harness executes commands but intentionally does not edit source
 
 The parser is conservative and best-effort. Treat its result as extracted evidence, not authoritative semantics.
 
+## Deterministic autonomous protocol
+
+Autonomous runs use a strict phase/decision contract. The agent must classify every command result before choosing its next action.
+
+| Phase/result | Allowed next action | Never do |
+| --- | --- | --- |
+| valid compare JSON | parse match + first mismatch | launch interactive `objdiff diff` |
+| hypothesis compile/link error | record experiment and change one hypothesis | call it infrastructure |
+| helper timeout/transport error | record transport failure; keep target | rotate candidate |
+| missing required path/tool | one existence check, then stop | scan arbitrary drives |
+| candidate seems difficult | continue bounded analysis of same target | manually re-rank/switch |
+| exact function match | integration check | select next target |
+| integration pass | authoritative refresh | select next target from stale report |
+| integration mismatch | keep target and diagnose object/range/padding | block for convenience |
+
+Candidate packs are context artifacts, not execution boundaries. Candidate preparation must not execute `objdiff`; comparisons are produced by `compare_target.py` and executed through `run_match.py`.
+
+An active batch target can only be abandoned with an explicit forced skip. Autonomous runs must never use forced skip as a ranking mechanism.
 ## Function exactness versus integration
 
 A function-level 100% result is recorded as `MATCH_EXACT`, then the same candidate enters `INTEGRATION_CHECK`. The batch must not advance to another candidate until integration passes.
