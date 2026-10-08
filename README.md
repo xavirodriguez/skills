@@ -129,6 +129,12 @@ La implementación está documentada en `decomp/MANUAL.md`.
 La integración con OpenCode está documentada en `decomp/OPENCODE.md`. Las políticas de sesión y el histórico de hipótesis se aplican también a los helpers autónomos.
 
 
+### Contrato autónomo
+
+El flujo autónomo no trata los fallos como texto libre. Cada resultado tiene una transición definida: error de hipótesis -> nueva hipótesis; error de herramienta -> mantener candidato; match exacto -> integración; integración -> refresh; solo entonces -> siguiente candidato.
+
+El plugin `decomp` incorpora este contrato en la versión `0.5.1`. Tras actualizar el plugin, abre un hilo nuevo de Codex para evitar cargar una copia anterior en caché.
+
 ### Tier 2 automatizado
 
 Pipeline recomendada:
