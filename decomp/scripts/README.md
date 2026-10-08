@@ -208,3 +208,29 @@ to decide which launcher the collector expects. Ghidra documents pyghidraRun.bat
 
 The current repository collectors use Ghidra's native headless scripting API, so they should continue to run under analyzeHeadless unless explicitly migrated to PyGhidra.
 
+
+## Execution guardrails
+
+### source_edit.py
+
+Use the deterministic UTF-8 editor for autonomous source changes. It supports complete-file replacement, exact-text replacement and line-range replacement. Existing files can be protected with an expected SHA-256, and writes are atomic.
+
+Example:
+
+    python source_edit.py replace-text --project . --path src/foo.cpp --old-file .decomp-agent/old.txt --new-file .decomp-agent/new.txt --expected-sha256 <sha256>
+
+The helper never invokes a shell patcher. Do not call `apply_patch` from PowerShell/cmd as an alternative.
+
+### compare_target.py
+
+Use this helper to obtain an agent-friendly per-function objdiff result. It calls `objdiff-cli report generate -f json` with stdin disabled and extracts the requested function by name or `name|address`.
+
+Example:
+
+    python compare_target.py --project . --target FS_LoadOverlay --objdiff-cli .\\objdiff-cli.exe
+
+It reports `match_percent`, `exact_match`, size, address and unit as JSON. It does not open the interactive objdiff UI.
+
+### run_match.py transport policy
+
+Autonomous build/compare experiments must run through `run_match.py`. The harness rejects nested `codex`/ `opencode` invocations and classifies known edit/TTY transport failures as `tool-transport-failure`. This state is telemetry only; it is not candidate stagnation.
