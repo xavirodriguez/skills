@@ -114,6 +114,35 @@ Canonical experiment shape:
 
 Do not replace these helpers with ad-hoc PowerShell, inline Python, interactive objdiff, or nested agent invocations.
 
+## Mandatory execution decision protocol
+
+For autonomous work, every tool result must be classified before the next action. Do not infer a new target, new hypothesis, or new tool path merely because a command failed.
+
+| Result | Required action | Forbidden action |
+| --- | --- | --- |
+| compare helper returns valid JSON | consume `match_percent` / `exact_match`; diagnose first mismatch | launch interactive objdiff |
+| compare/build exits non-zero with source/compiler/linker error caused by current edit | record experiment evidence; make one new source hypothesis | call it infrastructure failure |
+| helper timeout | record `tool-transport-failure`; keep target active | rotate candidate |
+| missing required helper/executable/path | perform one read-only existence check; if absent, stop | scan arbitrary drives or invent a replacement |
+| invalid helper JSON/path caused by invocation | correct invocation once; retry once | repeat the same malformed command |
+| candidate appears difficult or types are unresolved | keep the same `current_target`; gather bounded evidence | switch to another candidate |
+| optional artifact cannot be written | record `artifact-failure`; continue only if all required evidence exists | claim the artifact is complete |
+| exact function match | transition to `integration-pending`; verify object/link integration | claim final match or select another target |
+| integration mismatch | keep the same target; diagnose range/padding/object evidence | reset or skip the target |
+| infrastructure blocker | halt session | continue with guessed commands |
+
+### Target ownership
+
+Once `challenge_batch.py next --claim` assigns `current_target`, that target owns the session until:
+
+1. the function reaches an authoritative exact match;
+2. integration verification passes;
+3. the controller refreshes the report and selects the next target;
+
+or the controller explicitly blocks/halt it.
+
+"Too difficult", "not enough declarations yet", "first hypothesis is unsafe", or "another candidate looks easier" are **not** valid reasons to abandon the current target.
+
 ## 0. Environment and shell preflight
 
 Before any helper or build command:
@@ -393,12 +422,14 @@ Example on PH:
       --target <function> \
       --shell powershell \
       --build-command "ninja" \
-      --compare-command ".\\objdiff-cli.exe diff -p . <function>" \
+      --compare-command "<python> ../../scripts/compare_target.py --project . --target <function> --objdiff-cli .\\objdiff-cli.exe" \
       --compare-on-build-failure \
       --allow-build-failure-if-compare-passes \
+      --policy .decomp-agent/session-policy.json \
+      --require-policy \
       --force
 
-The build/compare logs record both the compiler exit code and the authoritative function comparison result.
+The compare helper generates/reads a machine-readable objdiff report with interactive stdin disabled. The build/compare logs record both the compiler exit code and the authoritative function comparison result.
 
 
 1. Run ../../scripts/inspect_project.py and save its JSON as the project baseline.
