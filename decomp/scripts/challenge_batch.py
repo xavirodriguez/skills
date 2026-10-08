@@ -400,6 +400,39 @@ def record_result(
     return candidate
 
 
+def finalize_integrated_target(session: dict[str, Any], *, target: str) -> dict[str, Any]:
+    queue = session.get("queue", [])
+    candidate = next(
+        (item for item in queue if item.get("name") == target or item.get("key") == target),
+        None,
+    )
+    if candidate is None:
+        raise ValueError(f"Target is not present in session queue: {target}")
+    if candidate.get("status") != "integration-passed":
+        raise ValueError(f"Target is not ready for integration finalization: {target}")
+    now = now_utc()
+    candidate["status"] = "matched"
+    candidate["matched_at"] = now
+    session["current_target"] = None
+    session["phase"] = "matching"
+    session["integration_matches_completed"] = sum(1 for item in queue if item.get("status") == "matched")
+    session["matches_completed"] = session["integration_matches_completed"]
+    session.setdefault("history", []).append({
+        "timestamp": now,
+        "phase": "integration-refresh",
+        "target": candidate.get("name"),
+        "status": "integration-finalized",
+        "counted_as_stagnation": False,
+        "counted_as_attempt": False,
+    })
+    session["updated_at"] = now
+    quota = int(session.get("target_quota") or 0)
+    if quota > 0 and session["matches_completed"] >= quota:
+        session["halted"] = True
+        session["phase"] = "halted"
+        session["stop_reason"] = "quota-reached"
+    return candidate
+
 def record_integration(
     session: dict[str, Any],
     *,
@@ -447,14 +480,17 @@ def record_integration(
     }
 
     if status == "pass":
-        candidate["status"] = "matched"
-        candidate["matched_at"] = now
-        session["current_target"] = None
-        session["phase"] = "matching"
+        candidate["status"] = "integration-passed"
+        session["current_target"] = candidate["key"]
+        session["phase"] = "refresh-required"
         session["integration_matches_completed"] = sum(
+            1
+            for item in queue
+            if item.get("status") in {"matched", "integration-passed"}
+        )
+        session["matches_completed"] = sum(
             1 for item in queue if item.get("status") == "matched"
         )
-        session["matches_completed"] = session["integration_matches_completed"]
     elif status == "mismatch":
         candidate["status"] = "integration-pending"
         session["phase"] = "integration"
@@ -570,6 +606,17 @@ def refresh_report(
         reference=load_json(reference_path) if reference_path else None,
     )
     merge_candidates(session, evaluation)
+    active_key = session.get("current_target")
+    if active_key:
+        active = next(
+            (item for item in session.get("queue", []) if item.get("key") == active_key),
+            None,
+        )
+        if active and active.get("status") == "integration-passed":
+            finalize_integrated_target(
+                session,
+                target=str(active.get("key") or active.get("name")),
+            )
     save_session(session_path, session)
     return 0, session
 
