@@ -65,6 +65,10 @@ def validate_region(name: str, region: Any) -> dict[str, Any]:
         raise ValueError(f"{name}.function.entry is outside object range")
     if not range_start <= function_entry <= range_end:
         raise ValueError(f"{name}.function.entry is outside integration range")
+    if function_end > object_end:
+        raise ValueError(f"{name}.function extends past object end")
+    if function_end > range_end:
+        raise ValueError(f"{name}.function extends past integration range")
 
     padding = region.get("padding", {})
     if not isinstance(padding, dict):
