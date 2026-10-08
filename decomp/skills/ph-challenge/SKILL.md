@@ -1,6 +1,7 @@
 ---
 name: ph-challenge
 description: Select and solve Phantom Hourglass functions against a decompilation challenge's Tier 1, Tier 2 and optional Tier 3 requirements.
+compatibility: OpenCode and Codex
 ---
 
 # Phantom Hourglass Challenge
@@ -65,7 +66,7 @@ The scout is evidence only. objdiff remains authoritative.
 
 Run:
 
-    <python> <skills>/decomp/scripts/challenge.py \
+    <python> ../../scripts/challenge.py \
       .decomp-agent/challenge/report.json \
       --scout .decomp-agent/challenge/tier2-scout.json \
       --project . \
@@ -84,7 +85,7 @@ The unified engine applies the mechanical gates:
 
 Then prepare the selected candidate:
 
-    <python> <skills>/decomp/scripts/prepare_candidate.py \
+    <python> ../../scripts/prepare_candidate.py \
       .decomp-agent/challenge/tier2-selection.json <candidate> \
       --project . \
       --objdiff-cli .\\objdiff-cli.exe \
