@@ -47,34 +47,41 @@ The output contains CFG, branch/loop/switch evidence, calls, globals, stores, an
 
 The scout is evidence only. objdiff remains authoritative.
 
-## 4. Run the Tier 2 autopilot
+## 4. Run the unified Tier 2 selector
 
 Run:
 
-    <python> <skills>/decomp/scripts/challenge_autopilot.py \
+    <python> <skills>/decomp/scripts/challenge.py \
       .decomp-agent/challenge/report.json \
       --scout .decomp-agent/challenge/tier2-scout.json \
       --project . \
-      --objdiff-json objdiff.json \
+      --reference .decomp-agent/reference/ph-analysis.json \
       --top 10 \
-      --write-packs \
-      --objdiff-cli .\\objdiff-cli.exe \
       -o .decomp-agent/challenge/tier2-selection.json
 
-The autopilot applies all mechanical gates:
+The unified engine applies the mechanical gates:
 - exact zero-match status;
 - at least 256 bytes;
-- at least the P75 of remaining undecompiled functions;
-- confirmed branch/loop/switch control flow;
+- at least the P75 of remaining zero-match functions;
+- conditional branch, loop/back-edge or computed-switch evidence;
 - rejects accessor-like, thunk, stub/table/initializer candidates;
-- requires additional call/global evidence for branch-only wrappers.
+- reports source-existence status separately;
+- ranks eligible candidates with success and game-logic scores.
 
-It writes one candidate pack per eligible function containing:
-- candidate JSON;
-- current objdiff diff;
-- a concise Codex prompt.
+Then prepare the selected candidate:
 
-The final "real game logic" classification remains a manual check. The script deliberately reports it as heuristic evidence rather than pretending semantics can be proven automatically.
+    <python> <skills>/decomp/scripts/prepare_candidate.py \
+      .decomp-agent/challenge/tier2-selection.json <candidate> \
+      --project . \
+      --objdiff-cli .\\objdiff-cli.exe \
+      --scout-json .decomp-agent/challenge/tier2-scout.json \
+      --analysis-json .decomp-agent/targets/<candidate>-analysis.json \
+      --reference-json .decomp-agent/reference/ph-analysis.json \
+      --xmap-json .decomp-agent/xmap-ghidra.json
+
+The pack contains source, direct headers, objdiff output, Ghidra analysis and supporting evidence when supplied, plus a concise Codex prompt.
+
+The final "real game logic" classification remains a review step; heuristics are evidence, not proof.
 
 ## 5. Tier 1
 
@@ -100,7 +107,7 @@ A Tier 2 target must satisfy every gate:
 
 "Confirmed control flow" requires Ghidra scout evidence (`has_branch`, `has_loop`, or `has_switch`).
 
-The selector's `likely_game_logic` is a screening signal, not proof. Manually verify that the function implements real game logic and is not merely an accessor, wrapper, initializer or data helper.
+The engine's game_logic_score is a screening signal, not proof. Manually verify that the function implements real game logic and is not merely an accessor, wrapper, initializer or data helper.
 
 Choose the highest-success candidate among the eligible set rather than blindly choosing the largest one.
 

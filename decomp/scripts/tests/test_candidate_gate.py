@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
 import sys
@@ -11,69 +10,61 @@ from candidate_gate import gate
 
 
 class CandidateGateTests(unittest.TestCase):
-    def test_unmarked_reference_blocks_unit_by_default(self) -> None:
+    def test_reference_status_is_function_level(self) -> None:
         objdiff = {
             "units": [{
                 "name": "TouchControl",
                 "target_path": "src/Main/Player/TouchControl.cpp",
                 "metadata": {"complete": False},
+                "functions": [
+                    {"name": "func_02001000", "size": 300, "address": "0x02001000", "fuzzy_match_percent": 0},
+                    {"name": "func_02002000", "size": 300, "address": "0x02002000", "fuzzy_match_percent": 0},
+                ],
             }]
         }
         reference = {
-            "functions": [{
-                "name": "func_02001000",
-                "source_file": "D:/ref/ph/src/Main/Player/TouchControl.cpp",
-                "status": "unmarked",
-            }]
+            "functions": [
+                {
+                    "name": "func_02001000",
+                    "source_file": "D:/ref/ph/src/Main/Player/TouchControl.cpp",
+                    "status": "known_nonmatching",
+                },
+                {
+                    "name": "func_02002000",
+                    "source_file": "D:/ref/ph/src/Main/Player/TouchControl.cpp",
+                    "status": "unmarked",
+                },
+            ]
         }
-        result = gate(objdiff, reference)
-        self.assertEqual(result["candidates"][0]["action"], "skip_unit_by_default")
-        self.assertEqual(result["reference_blocked_units"], 1)
 
-    def test_nonmatching_reference_allows_codegen_work(self) -> None:
-        objdiff = {
-            "units": [{
-                "name": "TouchControl",
-                "target_path": "src/Main/Player/TouchControl.cpp",
-                "metadata": {"complete": False},
-            }]
-        }
-        reference = {
-            "functions": [{
-                "name": "func_02001000",
-                "source_file": "D:/ref/ph/src/Main/Player/TouchControl.cpp",
-                "status": "known_nonmatching",
-            }]
-        }
         result = gate(objdiff, reference)
-        self.assertEqual(
-            result["candidates"][0]["action"],
-            "inspect_reference_nonmatching",
-        )
-        self.assertEqual(result["reference_blocked_units"], 0)
+        actions = {item["name"]: item["action"] for item in result["functions"]}
+        self.assertEqual(actions["func_02001000"], "reuse_reference_and_match")
+        self.assertEqual(actions["func_02002000"], "reuse_reference_apparently_matching")
+        self.assertEqual(result["summary"]["target_incomplete_functions"], 2)
 
-    def test_complete_reference_build_is_strongest_gate(self) -> None:
+    def test_complete_reference_does_not_block_target_function(self) -> None:
         objdiff = {
             "units": [{
                 "name": "TouchControl",
-                "target_path": "src/Main/Player/TouchControl.cpp",
                 "metadata": {"complete": False},
+                "functions": [
+                    {"name": "func_02001000", "size": 300, "address": "0x02001000", "fuzzy_match_percent": 0},
+                ],
             }]
         }
         reference = {
             "functions": [{
                 "name": "func_02001000",
-                "source_file": "D:/ref/ph/src/Main/Player/TouchControl.cpp",
                 "status": "unmarked",
                 "reference_build_status": "complete",
             }]
         }
+
         result = gate(objdiff, reference)
-        self.assertEqual(
-            result["candidates"][0]["action"],
-            "skip_verified_reference_unit",
-        )
-        self.assertEqual(result["candidates"][0]["reference_functions"][0]["reference_build_status"], "complete")
+        item = result["functions"][0]
+        self.assertEqual(item["action"], "reuse_verified_reference")
+        self.assertEqual(result["summary"]["new_target_analysis"], 0)
 
 
 if __name__ == "__main__":

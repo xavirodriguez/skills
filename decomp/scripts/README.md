@@ -78,7 +78,12 @@ Dry-run executes nothing. To execute the explicitly supplied commands:
       --compare-command "make compare" \
       --iterations 1 --force
 
-The harness records state under .decomp-agent/, including raw logs and hypotheses.jsonl. It intentionally does not modify source code.
+The harness records state under .decomp-agent/, including raw logs and a structured hypothesis ledger. It intentionally does not modify source code.
+
+When a build command ends non-zero because of a final ROM/hash check but the function object is still available, use:
+
+    python3 run_match.py --project . --target <function>       --build-command "ninja"       --compare-command "<authoritative compare>"       --compare-on-build-failure       --allow-build-failure-if-compare-passes       --force
+
 
 ## Recommended end-to-end workflow
 
@@ -97,7 +102,7 @@ See decomp/MANUAL.md for the complete Klonoa workflow and safety rules.
 
 ## Tier 2 challenge automation
 
-For Phantom Hourglass Tier 2, use the targeted Ghidra scout and autopilot instead of the generic top-100 scout:
+For Phantom Hourglass Tier 2, use the targeted Ghidra scout and the unified challenge engine instead of the generic top-100 scout:
 
     analyzeHeadless <project-dir> <project-name> -process <program> \
       -scriptPath decomp/scripts \

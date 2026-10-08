@@ -246,7 +246,24 @@ For completion, report exact-match status and the verification command.
 
 ## 11. Use the agent harness
 
-For a real project, use the helpers as a pipeline rather than invoking them as isolated scripts:
+For a real project, use the helpers as a pipeline rather than invoking them as isolated scripts.
+
+When a project has a final ROM/hash check that fails after the required object files are built, use the harness's explicit compare-on-build-failure mode rather than treating the decompilation as blocked.
+
+Example on PH:
+
+    <python> <skills>/decomp/scripts/run_match.py \
+      --project . \
+      --target <function> \
+      --shell powershell \
+      --build-command "ninja" \
+      --compare-command ".\\objdiff-cli.exe diff -p . <function>" \
+      --compare-on-build-failure \
+      --allow-build-failure-if-compare-passes \
+      --force
+
+The build/compare logs record both the compiler exit code and the authoritative function comparison result.
+
 
 1. Run decomp/scripts/inspect_project.py and save its JSON as the project baseline.
 2. Identify the authoritative build and compare commands from the project itself.
