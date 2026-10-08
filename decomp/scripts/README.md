@@ -125,3 +125,14 @@ Then:
       --write-packs
 
 The autopilot computes the project's remaining undecompiled P75, enforces the 256-byte floor and control-flow gates, rejects common accessor/stub/table/initializer shapes, and writes Codex-ready candidate packs. It does not modify source code and does not claim that heuristics prove game logic.
+
+
+## OpenCode path resolution
+
+The skills under `decomp/skills/*/SKILL.md` reference shared helpers using paths relative to their own skill directory:
+
+    ../../scripts/<helper>
+
+This is intentional. OpenCode resolves paths in a skill relative to the directory containing `SKILL.md`, and an explicit skill source can contain nested `SKILL.md` files. Keeping the helpers under `decomp/scripts/` preserves the same repository layout for Codex and OpenCode.
+
+Run `python validate_skill_layout.py` from this directory to verify skill names, frontmatter and referenced helper paths.
