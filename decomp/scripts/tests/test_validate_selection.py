@@ -65,5 +65,30 @@ class SelectionValidationTests(unittest.TestCase):
                 validate({"format": "decomp-challenge-v2"}, report=report, scout=None, reference=None)
 
 
+    def test_rejects_stale_previous_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            report = root / "report.json"
+            previous = root / "previous.json"
+            report.write_text('{"version": 3}', encoding="utf-8")
+            previous_hash = write(previous, '{"version": 2}')
+            selection = {
+                "format": "decomp-roi-selection-v1",
+                "provenance": {
+                    "format": "decomp-selection-provenance-v1",
+                    "report": {"sha256": hashlib.sha256(report.read_bytes()).hexdigest()},
+                    "previous_report": {"sha256": previous_hash},
+                },
+            }
+            previous.write_text('{"version": 1}', encoding="utf-8")
+            with self.assertRaises(ValueError):
+                validate(
+                    selection,
+                    report=report,
+                    scout=None,
+                    reference=None,
+                    previous_report=previous,
+                )
+
 if __name__ == "__main__":
     unittest.main()
